@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lesson Plan">
+<meta name="theme-color" content="#20304a">
+<title>Weekly Lesson Plan</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --paper:#f4efe4;
+    --paper-raised:#fbf8f1;
+    --ink:#20304a;
+    --ink-soft:#4b5b72;
+    --gold:#b9902f;
+    --gold-soft:#e4c877;
+    --line:#d9d0bb;
+    --danger:#a5433a;
+    --radius:14px;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    overscroll-behavior-y: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* ---------- staff-line signature motif ---------- */
+  .staff{
+    height:14px;
+    background-image: repeating-linear-gradient(
+      var(--line) 0 1px, transparent 1px 4px
+    );
+    background-size: 100% 100%;
+    opacity:.55;
+  }
+
+  header.app-header{
+    position:sticky; top:0; z-index:20;
+    background:var(--ink);
+    color:var(--paper-raised);
+    padding:18px 20px 0;
+  }
+  header.app-header h1{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:22px;
+    letter-spacing:.2px;
+    margin:0 0 14px;
+  }
+  header.app-header h1 .sub{
+    display:block;
+    font-family:var(--sans);
+    font-size:12px;
+    font-weight:500;
+    letter-spacing:1.4px;
+    text-transform:uppercase;
+    color:var(--gold-soft);
+    margin-bottom:4px;
+  }
+
+  nav.days{
+    display:flex;
+    gap:4px;
+    overflow-x:auto;
+    padding-bottom:12px;
+    scrollbar-width:none;
+  }
+  nav.days::-webkit-scrollbar{ display:none; }
+  nav.days button{
+    flex:0 0 auto;
+    background:transparent;
+    border:none;
+    color:#a9b6c9;
+    font-family:var(--serif);
+    font-size:15px;
+    padding:8px 14px 10px;
+    border-radius:10px 10px 0 0;
+    position:relative;
+    cursor:pointer;
+  }
+  nav.days button .count{
+    display:block;
+    font-family:var(--sans);
+    font-size:10px;
+    color:#7f8ca0;
+    margin-top:2px;
+  }
+  nav.days button.active{
+    color:var(--paper-raised);
+    background:var(--paper);
+  }
+  nav.days button.active .count{ color:var(--gold); font-weight:600; }
+
+  main{ padding:16px; padding-bottom:100px; max-width:640px; margin:0 auto; }
+
+  .slot{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:10px;
+    overflow:hidden;
+    transition: box-shadow .15s ease;
+  }
+  .slot.has-content{ border-color: var(--gold); box-shadow: 0 1px 0 rgba(185,144,47,.15); }
+
+  .slot-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px 14px;
+    cursor:pointer;
+  }
+  .slot-time{
+    font-family:var(--serif);
+    font-size:15px;
+    font-weight:600;
+    width:58px;
+    flex:0 0 auto;
+    color:var(--ink);
+  }
+  .slot-time .ampm{ font-size:10px; color:var(--ink-soft); display:block; font-family:var(--sans); }
+
+  .slot-body{ flex:1; min-width:0; }
+  .slot-text-preview{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .slot-empty-label{ font-size:13px; color:#a9a08a; font-style:italic; }
+  .slot-song{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; color:var(--gold); margin-top:3px; font-weight:600;
+  }
+  .slot-song svg{ width:12px; height:12px; flex:0 0 auto; }
+
+  .chevron{ color:#c9bfa5; flex:0 0 auto; }
+
+  /* ---------- editor sheet ---------- */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(20,26,38,.5);
+    z-index:50; opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .sheet-backdrop.open{ opacity:1; pointer-events:auto; }
+
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:51;
+    background:var(--paper-raised);
+    border-radius:20px 20px 0 0;
+    max-height:88vh;
+    display:flex; flex-direction:column;
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.32,.72,0,1);
+    box-shadow: 0 -8px 30px rgba(0,0,0,.25);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sheet.open{ transform:translateY(0); }
+
+  .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:2px; margin:10px auto 4px; }
+
+  .sheet-header{
+    padding:6px 20px 14px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .sheet-header h2{
+    font-family:var(--serif); font-size:19px; margin:0; font-weight:600;
+  }
+  .sheet-header .day-sub{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .sheet-close{
+    background:var(--paper); border:none; width:32px; height:32px; border-radius:50%;
+    font-size:16px; color:var(--ink-soft); cursor:pointer;
+  }
+
+  .sheet-scroll{ overflow-y:auto; padding:16px 20px 24px; }
+
+  label.field-label{
+    display:block; font-size:11px; font-weight:700; letter-spacing:.8px;
+    text-transform:uppercase; color:var(--ink-soft); margin:18px 0 8px;
+  }
+  label.field-label:first-child{ margin-top:0; }
+
+  textarea.lesson-text{
+    width:100%; min-height:110px; resize:vertical;
+    border:1px solid var(--line); border-radius:10px; padding:12px;
+    font-family:var(--sans); font-size:15px; color:var(--ink);
+    background:var(--paper); line-height:1.45;
+  }
+  textarea.lesson-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
+
+  .song-attach{
+    border:1px dashed var(--line); border-radius:10px; padding:12px;
+    background:var(--paper);
+  }
+  .song-current{
+    display:flex; align-items:center; gap:10px;
+  }
+  .song-current .name{ flex:1; min-width:0; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .icon-btn{
+    background:var(--ink); color:var(--paper-raised); border:none; border-radius:50%;
+    width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex:0 0 auto;
+  }
+  .icon-btn.ghost{ background:transparent; color:var(--danger); border:1px solid var(--line); }
+  .icon-btn svg{ width:15px; height:15px; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border:none; border-radius:10px; padding:11px 16px; font-size:14px; font-weight:600;
+    cursor:pointer; width:100%;
+  }
+  .btn.primary{ background:var(--ink); color:var(--paper-raised); }
+  .btn.secondary{ background:var(--paper); color:var(--ink); border:1px solid var(--line); }
+  .btn.small{ width:auto; padding:8px 12px; font-size:13px; }
+
+  .song-picker-list{ margin-top:10px; max-height:160px; overflow-y:auto; }
+  .song-picker-item{
+    display:flex; align-items:center; gap:10px; padding:9px 6px;
+    border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .song-picker-item:last-child{ border-bottom:none; }
+  .song-picker-item .name{ flex:1; font-size:13.5px; }
+  .song-picker-item:active{ background:var(--paper); }
+
+  .reuse-list{ margin-top:8px; max-height:220px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; }
+  .reuse-item{
+    padding:11px 12px; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .reuse-item:last-child{ border-bottom:none; }
+  .reuse-item:active{ background:var(--paper); }
+  .reuse-item .when{ font-family:var(--serif); font-size:13.5px; font-weight:600; }
+  .reuse-item .preview{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .empty-note{ font-size:13px; color:var(--ink-soft); padding:10px 2px; }
+
+  input[type=file]{ display:none; }
+
+  .sheet-footer{
+    padding:14px 20px; border-top:1px solid var(--line);
+    display:flex; gap:10px;
+  }
+
+  .toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--paper-raised); padding:10px 18px; border-radius:20px;
+    font-size:13px; font-weight:600; z-index:60; opacity:0; transition:all .25s ease; pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .offline-badge{
+    display:none; align-items:center; gap:6px; font-size:11px; color:var(--gold-soft);
+    padding:2px 10px 10px;
+  }
+  .offline-badge.show{ display:flex; }
+  .offline-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--gold); }
+
+  .header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .btn-library{
+    flex:0 0 auto; margin-top:2px;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+    color:var(--gold-soft); border-radius:20px; padding:7px 14px 7px 11px;
+    font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:6px;
+    cursor:pointer;
+  }
+  .btn-library svg{ width:14px; height:14px; }
+
+  .library-song-item{
+    display:flex; align-items:center; gap:10px; padding:12px 6px;
+    border-bottom:1px solid var(--line);
+  }
+  .library-song-item:last-child{ border-bottom:none; }
+  .library-song-item .name{ flex:1; font-size:14.5px; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .library-song-item .used-count{ font-size:11px; color:var(--ink-soft); font-weight:400; display:block; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-row">
+    <h1><span class="sub">Weekly Lesson Plan</span>Sunday &ndash; Saturday</h1>
+    <button class="btn-library" id="btnOpenLibrary">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      Songs
+    </button>
+  </div>
+  <div class="offline-badge" id="offlineBadge"><span class="dot"></span> Offline &mdash; changes saved on this device</div>
+  <nav class="days" id="dayNav"></nav>
+</header>
+<div class="staff"></div>
+
+<main id="slotList"></main>
+
+<div class="sheet-backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div>
+      <h2 id="sheetTitle">9:00</h2>
+      <div class="day-sub" id="sheetSub">Monday</div>
+    </div>
+    <button class="sheet-close" id="sheetClose">&#10005;</button>
+  </div>
+  <div class="sheet-scroll">
+
+    <label class="field-label">Lesson notes</label>
+    <textarea class="lesson-text" id="lessonText" placeholder="What are you covering this hour?"></textarea>
+
+    <label class="field-label">Song</label>
+    <div class="song-attach" id="songAttachEmpty">
+      <div style="display:flex; gap:10px;">
+        <button class="btn secondary small" id="btnUploadSong">Add new MP3</button>
+        <button class="btn secondary small" id="btnPickSong">Choose from library</button>
+      </div>
+      <div class="song-picker-list" id="songPickerList" style="display:none;"></div>
+    </div>
+    <div class="song-attach" id="songAttachFilled" style="display:none;">
+      <div class="song-current">
+        <button class="icon-btn" id="btnPlaySong" aria-label="Play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <div class="name" id="currentSongName"></div>
+        <button class="icon-btn ghost" id="btnRemoveSong" aria-label="Remove song">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <audio id="audioPlayer" style="width:100%; margin-top:10px; display:none;" controls></audio>
+    </div>
+
+    <label class="field-label">Reuse a previous lesson</label>
+    <button class="btn secondary" id="btnReuseToggle">Browse lessons already written&hellip;</button>
+    <div class="reuse-list" id="reuseList" style="display:none;"></div>
+
+  </div>
+  <div class="sheet-footer">
+    <button class="btn secondary" id="btnClear">Clear hour</button>
+    <button class="btn primary" id="btnSave">Save</button>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="libraryBackdrop"></div>
+<div class="sheet" id="librarySheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div>
+      <h2>Song library</h2>
+      <div class="day-sub">Add songs any time &mdash; attach them to hours later</div>
+    </div>
+    <button class="sheet-close" id="libraryClose">&#10005;</button>
+  </div>
+  <div class="sheet-scroll">
+    <button class="btn primary" id="btnLibraryAddSong">Add new MP3</button>
+    <audio id="libraryAudioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
+    <div id="libraryList" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="audio/mpeg,audio/mp3,.mp3">
+<input type="file" id="libraryFileInput" accept="audio/mpeg,audio/mp3,.mp3">
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var db = null;
+  var currentDay = 0;
+  var currentHour = null;
+  var pendingSongId = null; // song id staged for the open sheet, before Save
+  var objectUrls = [];
+
+  // ---------------------------------------------------------------
+  // IndexedDB setup
+  // ---------------------------------------------------------------
+  function openDb(cb){
+    var req = indexedDB.open("lesson-planner", 1);
+    req.onupgradeneeded = function(e){
+      var d = e.target.result;
+      if(!d.objectStoreNames.contains("lessons")){
+        d.createObjectStore("lessons", { keyPath: "id" }); // id = "day-hour"
+      }
+      if(!d.objectStoreNames.contains("songs")){
+        d.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
+      }
+    };
+    req.onsuccess = function(e){ db = e.target.result; cb(); };
+    req.onerror = function(e){ console.error("DB error", e); showToast("Storage error - see console"); };
+  }
+
+  function tx(store, mode){ return db.transaction(store, mode).objectStore(store); }
+
+  function getAllLessons(cb){
+    var out = {};
+    var req = tx("lessons","readonly").getAll();
+    req.onsuccess = function(){
+      req.result.forEach(function(l){ out[l.id] = l; });
+      cb(out);
+    };
+  }
+
+  function getAllSongs(cb){
+    var req = tx("songs","readonly").getAll();
+    req.onsuccess = function(){ cb(req.result); };
+  }
+
+  function saveLesson(lesson, cb){
+    var req = tx("lessons","readwrite").put(lesson);
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  function deleteLesson(id, cb){
+    var req = tx("lessons","readwrite").delete(id);
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  function addSong(name, blob, cb){
+    var req = tx("songs","readwrite").add({ name: name, blob: blob, added: Date.now() });
+    req.onsuccess = function(){ cb(req.result); };
+  }
+
+  function getSong(id, cb){
+    var req = tx("songs","readonly").get(id);
+    req.onsuccess = function(){ cb(req.result); };
+  }
+
+  function deleteSong(id, cb){
+    var req = tx("songs","readwrite").delete(id);
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  // ---------------------------------------------------------------
+  // State cache (kept in sync with DB, drives rendering)
+  // ---------------------------------------------------------------
+  var lessonsById = {};
+  var songs = [];
+
+  function slotId(day, hour){ return day + "-" + hour; }
+
+  function refreshAll(then){
+    getAllLessons(function(l){
+      lessonsById = l;
+      getAllSongs(function(s){
+        songs = s;
+        then && then();
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Rendering: day nav
+  // ---------------------------------------------------------------
+  function countForDay(day){
+    var n = 0;
+    for(var h=0; h<24; h++){ if(lessonsById[slotId(day,h)]) n++; }
+    return n;
+  }
+
+  function renderDayNav(){
+    var nav = document.getElementById("dayNav");
+    nav.innerHTML = "";
+    DAYS.forEach(function(name, i){
+      var b = document.createElement("button");
+      b.className = i === currentDay ? "active" : "";
+      var c = countForDay(i);
+      b.innerHTML = name.slice(0,3) + '<span class="count">' + (c || "&middot;") + '</span>';
+      b.onclick = function(){ currentDay = i; renderDayNav(); renderSlotList(); };
+      nav.appendChild(b);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Rendering: hour list for current day
+  // ---------------------------------------------------------------
+  function fmtHour(h){
+    var ampm = h < 12 ? "AM" : "PM";
+    var h12 = h % 12; if(h12 === 0) h12 = 12;
+    return { label: h12 + ":00", ampm: ampm };
+  }
+
+  function renderSlotList(){
+    var main = document.getElementById("slotList");
+    main.innerHTML = "";
+    for(var h=0; h<24; h++){
+      var id = slotId(currentDay, h);
+      var lesson = lessonsById[id];
+      var t = fmtHour(h);
+
+      var el = document.createElement("div");
+      el.className = "slot" + (lesson ? " has-content" : "");
+      el.innerHTML =
+        '<div class="slot-row">' +
+          '<div class="slot-time">' + t.label + '<span class="ampm">' + t.ampm + '</span></div>' +
+          '<div class="slot-body">' +
+            (lesson && lesson.text ? '<div class="slot-text-preview">' + escapeHtml(lesson.text) + '</div>' : '<div class="slot-empty-label">Tap to add a lesson</div>') +
+            (lesson && lesson.songId ? '<div class="slot-song">' + noteIcon() + songName(lesson.songId) + '</div>' : '') +
+          '</div>' +
+          '<div class="chevron">&#8250;</div>' +
+        '</div>';
+      el.querySelector(".slot-row").onclick = function(hh){ return function(){ openSheet(currentDay, hh); }; }(h);
+      main.appendChild(el);
+    }
+  }
+
+  function songName(id){
+    var s = songs.filter(function(s){ return s.id === id; })[0];
+    return s ? escapeHtml(s.name) : "(song removed)";
+  }
+
+  function noteIcon(){
+    return '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement("div"); d.textContent = s; return d.innerHTML;
+  }
+
+  // ---------------------------------------------------------------
+  // Editor sheet
+  // ---------------------------------------------------------------
+  var sheetEl = document.getElementById("sheet");
+  var backdropEl = document.getElementById("backdrop");
+
+  function openSheet(day, hour){
+    currentDay = day; currentHour = hour;
+    var lesson = lessonsById[slotId(day,hour)];
+    pendingSongId = lesson ? (lesson.songId || null) : null;
+
+    var t = fmtHour(hour);
+    document.getElementById("sheetTitle").textContent = t.label + " " + t.ampm;
+    document.getElementById("sheetSub").textContent = DAYS[day];
+    document.getElementById("lessonText").value = lesson ? (lesson.text || "") : "";
+
+    document.getElementById("songPickerList").style.display = "none";
+    document.getElementById("reuseList").style.display = "none";
+    stopAudio();
+    renderSongAttachState();
+
+    backdropEl.classList.add("open");
+    sheetEl.classList.add("open");
+  }
+
+  function closeSheet(){
+    backdropEl.classList.remove("open");
+    sheetEl.classList.remove("open");
+    stopAudio();
+  }
+
+  document.getElementById("backdrop").onclick = closeSheet;
+  document.getElementById("sheetClose").onclick = closeSheet;
+
+  function renderSongAttachState(){
+    var empty = document.getElementById("songAttachEmpty");
+    var filled = document.getElementById("songAttachFilled");
+    if(pendingSongId){
+      empty.style.display = "none";
+      filled.style.display = "block";
+      document.getElementById("currentSongName").textContent = songName(pendingSongId);
+    } else {
+      empty.style.display = "block";
+      filled.style.display = "none";
+    }
+  }
+
+  // --- add new mp3 ---
+  document.getElementById("btnUploadSong").onclick = function(){
+    document.getElementById("fileInput").click();
+  };
+  document.getElementById("fileInput").onchange = function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    addSong(file.name.replace(/\.mp3$/i,""), file, function(newId){
+      refreshAll(function(){
+        pendingSongId = newId;
+        renderSongAttachState();
+        showToast("Song saved to your library");
+      });
+    });
+    e.target.value = "";
+  };
+
+  // --- choose from library ---
+  document.getElementById("btnPickSong").onclick = function(){
+    var list = document.getElementById("songPickerList");
+    if(list.style.display === "block"){ list.style.display = "none"; return; }
+    if(songs.length === 0){
+      list.innerHTML = '<div class="empty-note">No songs saved yet &mdash; tap "Add new MP3" first.</div>';
+    } else {
+      list.innerHTML = "";
+      songs.slice().sort(function(a,b){ return b.added - a.added; }).forEach(function(s){
+        var item = document.createElement("div");
+        item.className = "song-picker-item";
+        item.innerHTML = '<span class="name">' + escapeHtml(s.name) + '</span>';
+        item.onclick = function(){
+          pendingSongId = s.id;
+          list.style.display = "none";
+          renderSongAttachState();
+        };
+        list.appendChild(item);
+      });
+    }
+    list.style.display = "block";
+  };
+
+  document.getElementById("btnRemoveSong").onclick = function(){
+    pendingSongId = null;
+    renderSongAttachState();
+  };
+
+  // --- playback ---
+  var audioEl = document.getElementById("audioPlayer");
+  function stopAudio(){
+    audioEl.pause();
+    audioEl.style.display = "none";
+    audioEl.removeAttribute("src");
+  }
+  document.getElementById("btnPlaySong").onclick = function(){
+    if(!pendingSongId) return;
+    getSong(pendingSongId, function(s){
+      if(!s) return;
+      var url = URL.createObjectURL(s.blob);
+      objectUrls.push(url);
+      audioEl.src = url;
+      audioEl.style.display = "block";
+      audioEl.play();
+    });
+  };
+
+  // --- reuse previous lesson ---
+  document.getElementById("btnReuseToggle").onclick = function(){
+    var list = document.getElementById("reuseList");
+    if(list.style.display === "block"){ list.style.display = "none"; return; }
+
+    var entries = Object.keys(lessonsById).map(function(k){ return lessonsById[k]; })
+      .filter(function(l){ return l.id !== slotId(currentDay, currentHour) && (l.text || l.songId); })
+      .sort(function(a,b){ return (b.updated||0) - (a.updated||0); });
+
+    if(entries.length === 0){
+      list.innerHTML = '<div class="empty-note">No other lessons have content yet.</div>';
+    } else {
+      list.innerHTML = "";
+      entries.forEach(function(l){
+        var parts = l.id.split("-");
+        var d = parseInt(parts[0],10), h = parseInt(parts[1],10);
+        var t = fmtHour(h);
+        var item = document.createElement("div");
+        item.className = "reuse-item";
+        item.innerHTML =
+          '<div class="when">' + DAYS[d] + ", " + t.label + " " + t.ampm + '</div>' +
+          '<div class="preview">' + (l.text ? escapeHtml(l.text) : "(no notes)") + (l.songId ? " &middot; &#9835; " + songName(l.songId) : "") + '</div>';
+        item.onclick = function(){
+          document.getElementById("lessonText").value = l.text || "";
+          pendingSongId = l.songId || null;
+          renderSongAttachState();
+          list.style.display = "none";
+          showToast("Copied from " + DAYS[d] + " " + t.label + t.ampm);
+        };
+        list.appendChild(item);
+      });
+    }
+    list.style.display = "block";
+  };
+
+  // --- save / clear ---
+  document.getElementById("btnSave").onclick = function(){
+    var text = document.getElementById("lessonText").value.trim();
+    var id = slotId(currentDay, currentHour);
+    if(!text && !pendingSongId){
+      deleteLesson(id, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); }); });
+      return;
+    }
+    saveLesson({ id: id, text: text, songId: pendingSongId, updated: Date.now() }, function(){
+      refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("Saved"); });
+    });
+  };
+
+  document.getElementById("btnClear").onclick = function(){
+    var id = slotId(currentDay, currentHour);
+    deleteLesson(id, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); }); });
+  };
+
+  // ---------------------------------------------------------------
+  // Toast
+  // ---------------------------------------------------------------
+  var toastTimer = null;
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1800);
+  }
+
+  // ---------------------------------------------------------------
+  // Standalone song library sheet - add/remove songs independent of
+  // any specific hour, per the requirement that adding songs should
+  // be possible freely, not just while editing a lesson.
+  // ---------------------------------------------------------------
+  var libraryBackdropEl = document.getElementById("libraryBackdrop");
+  var librarySheetEl = document.getElementById("librarySheet");
+  var libraryAudioEl = document.getElementById("libraryAudioPlayer");
+
+  function usageCount(songId){
+    return Object.keys(lessonsById).filter(function(k){ return lessonsById[k].songId === songId; }).length;
+  }
+
+  function openLibrarySheet(){
+    libraryAudioEl.pause();
+    libraryAudioEl.style.display = "none";
+    renderLibraryList();
+    libraryBackdropEl.classList.add("open");
+    librarySheetEl.classList.add("open");
+  }
+
+  function closeLibrarySheet(){
+    libraryBackdropEl.classList.remove("open");
+    librarySheetEl.classList.remove("open");
+    libraryAudioEl.pause();
+  }
+
+  document.getElementById("btnOpenLibrary").onclick = openLibrarySheet;
+  document.getElementById("libraryClose").onclick = closeLibrarySheet;
+  libraryBackdropEl.onclick = closeLibrarySheet;
+
+  function renderLibraryList(){
+    var list = document.getElementById("libraryList");
+    if(songs.length === 0){
+      list.innerHTML = '<div class="empty-note">No songs yet. Tap "Add new MP3" above to save one &mdash; you can attach it to any hour later.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    songs.slice().sort(function(a,b){ return b.added - a.added; }).forEach(function(s){
+      var count = usageCount(s.id);
+      var row = document.createElement("div");
+      row.className = "library-song-item";
+      row.innerHTML =
+        '<button class="icon-btn" aria-label="Play">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
+        '</button>' +
+        '<div class="name">' + escapeHtml(s.name) +
+          '<span class="used-count">' + (count === 0 ? "Not used in any hour yet" : "Used in " + count + " hour" + (count===1?"":"s")) + '</span>' +
+        '</div>' +
+        '<button class="icon-btn ghost" aria-label="Delete">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+        '</button>';
+
+      row.querySelector(".icon-btn:not(.ghost)").onclick = function(){
+        var url = URL.createObjectURL(s.blob);
+        objectUrls.push(url);
+        libraryAudioEl.src = url;
+        libraryAudioEl.style.display = "block";
+        libraryAudioEl.play();
+      };
+      row.querySelector(".icon-btn.ghost").onclick = function(){
+        var msg = count > 0
+          ? 'Delete "' + s.name + '"? It\'s used in ' + count + ' hour' + (count===1?"":"s") + " - those lessons will keep their notes but lose the song."
+          : 'Delete "' + s.name + '"?';
+        if(!confirm(msg)) return;
+        deleteSong(s.id, function(){
+          refreshAll(function(){
+            renderLibraryList();
+            renderDayNav();
+            renderSlotList();
+            showToast("Song deleted");
+          });
+        });
+      };
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById("btnLibraryAddSong").onclick = function(){
+    document.getElementById("libraryFileInput").click();
+  };
+  document.getElementById("libraryFileInput").onchange = function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    addSong(file.name.replace(/\.mp3$/i,""), file, function(){
+      refreshAll(function(){
+        renderLibraryList();
+        showToast("Song added to your library");
+      });
+    });
+    e.target.value = "";
+  };
+
+  // ---------------------------------------------------------------
+  // Offline badge
+  // ---------------------------------------------------------------
+  function updateOnlineBadge(){
+    document.getElementById("offlineBadge").classList.toggle("show", !navigator.onLine);
+  }
+  window.addEventListener("online", updateOnlineBadge);
+  window.addEventListener("offline", updateOnlineBadge);
+
+  // ---------------------------------------------------------------
+  // Service worker registration (enables offline app-shell caching)
+  // ---------------------------------------------------------------
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("service-worker.js").catch(function(err){
+        console.warn("Service worker registration failed", err);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------
+  openDb(function(){
+    refreshAll(function(){
+      renderDayNav();
+      renderSlotList();
+      updateOnlineBadge();
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
