@@ -247,6 +247,14 @@
     border-radius:12px; padding:11px; font-size:13.5px; font-weight:700; cursor:pointer;
     margin-top:4px;
   }
+
+  select.hour-select{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:11px 12px;
+    font-family:var(--sans); font-size:15px; color:var(--ink);
+    background:var(--paper); appearance:none; -webkit-appearance:none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234b5b72' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; background-size:16px;
+  }
   .icon-btn{
     background:var(--ink); color:var(--paper-raised); border:none; border-radius:50%;
     width:34px; height:34px; display:flex; align-items:center; justify-content:center;
@@ -305,12 +313,13 @@
   .offline-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--gold); }
 
   .header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .header-btn-group{ display:flex; gap:8px; flex:0 0 auto; }
   .btn-library{
     flex:0 0 auto; margin-top:2px;
     background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
-    color:var(--gold-soft); border-radius:20px; padding:7px 14px 7px 11px;
-    font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:6px;
-    cursor:pointer;
+    color:var(--gold-soft); border-radius:20px; padding:7px 12px 7px 10px;
+    font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:5px;
+    cursor:pointer; white-space:nowrap;
   }
   .btn-library svg{ width:14px; height:14px; }
 
@@ -328,10 +337,16 @@
 <header class="app-header">
   <div class="header-row">
     <h1><span class="sub">Weekly Lesson Plan</span>Sunday &ndash; Saturday</h1>
-    <button class="btn-library" id="btnOpenLibrary">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-      Songs
-    </button>
+    <div class="header-btn-group">
+      <button class="btn-library" id="btnOpenLibrary">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        Songs
+      </button>
+      <button class="btn-library" id="btnOpenSettings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+        Hours
+      </button>
+    </div>
   </div>
   <div class="offline-badge" id="offlineBadge"><span class="dot"></span> Offline &mdash; changes saved on this device</div>
   <nav class="days" id="dayNav"></nav>
@@ -385,6 +400,34 @@
   </div>
 </div>
 
+<div class="sheet-backdrop" id="settingsBackdrop"></div>
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div>
+      <h2>Work hours</h2>
+      <div class="day-sub">Choose which hours show up in the daily list</div>
+    </div>
+    <button class="sheet-close" id="settingsClose">&#10005;</button>
+  </div>
+  <div class="sheet-scroll">
+    <label class="field-label">Start hour</label>
+    <select class="hour-select" id="startHourSelect"></select>
+
+    <label class="field-label">End hour</label>
+    <select class="hour-select" id="endHourSelect"></select>
+
+    <div class="empty-note" style="margin-top:14px;">
+      Lessons you've already written outside this range are kept safely &mdash;
+      they just won't be shown until you widen the range again.
+    </div>
+  </div>
+  <div class="sheet-footer">
+    <button class="btn secondary" id="btnResetHours">Show full day</button>
+    <button class="btn primary" id="btnSaveHours">Save</button>
+  </div>
+</div>
+
 <input type="file" id="fileInput" accept="audio/mpeg,audio/mp3,.mp3">
 <input type="file" id="libraryFileInput" accept="audio/mpeg,audio/mp3,.mp3">
 
@@ -397,6 +440,7 @@
   var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   var db = null;
   var currentDay = 0;
+  var workHours = { start: 0, end: 23 }; // default: show the full day, unless configured otherwise
   var currentHour = null;
   var objectUrls = [];
 
@@ -404,7 +448,7 @@
   // IndexedDB setup
   // ---------------------------------------------------------------
   function openDb(cb){
-    var req = indexedDB.open("lesson-planner", 1);
+    var req = indexedDB.open("lesson-planner", 2);
     req.onupgradeneeded = function(e){
       var d = e.target.result;
       if(!d.objectStoreNames.contains("lessons")){
@@ -412,6 +456,9 @@
       }
       if(!d.objectStoreNames.contains("songs")){
         d.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
+      }
+      if(!d.objectStoreNames.contains("settings")){
+        d.createObjectStore("settings", { keyPath: "id" }); // single record, id = "config"
       }
     };
     req.onsuccess = function(e){ db = e.target.result; cb(); };
@@ -456,6 +503,18 @@
 
   function deleteSong(id, cb){
     var req = tx("songs","readwrite").delete(id);
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  function getSettings(cb){
+    var req = tx("settings","readonly").get("config");
+    req.onsuccess = function(){ cb(req.result || null); };
+    req.onerror = function(){ cb(null); };
+  }
+
+  function saveSettings(settings, cb){
+    settings.id = "config";
+    var req = tx("settings","readwrite").put(settings);
     req.onsuccess = function(){ cb && cb(); };
   }
 
@@ -520,7 +579,7 @@
   function renderSlotList(){
     var main = document.getElementById("slotList");
     main.innerHTML = "";
-    for(var h=0; h<24; h++){
+    for(var h=workHours.start; h<=workHours.end; h++){
       var id = slotId(currentDay, h);
       var lesson = lessonsById[id];
       var items = getItems(lesson).filter(function(it){ return it.text || it.songId; });
@@ -903,6 +962,64 @@
   };
 
   // ---------------------------------------------------------------
+  // Settings sheet - configure which hours are shown per day
+  // ---------------------------------------------------------------
+  var settingsBackdropEl = document.getElementById("settingsBackdrop");
+  var settingsSheetEl = document.getElementById("settingsSheet");
+
+  function populateHourSelect(sel, selectedValue){
+    sel.innerHTML = "";
+    for(var h=0; h<24; h++){
+      var t = fmtHour(h);
+      var opt = document.createElement("option");
+      opt.value = h;
+      opt.textContent = t.label + " " + t.ampm;
+      if(h === selectedValue) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  function openSettingsSheet(){
+    populateHourSelect(document.getElementById("startHourSelect"), workHours.start);
+    populateHourSelect(document.getElementById("endHourSelect"), workHours.end);
+    settingsBackdropEl.classList.add("open");
+    settingsSheetEl.classList.add("open");
+  }
+
+  function closeSettingsSheet(){
+    settingsBackdropEl.classList.remove("open");
+    settingsSheetEl.classList.remove("open");
+  }
+
+  document.getElementById("btnOpenSettings").onclick = openSettingsSheet;
+  document.getElementById("settingsClose").onclick = closeSettingsSheet;
+  settingsBackdropEl.onclick = closeSettingsSheet;
+
+  document.getElementById("btnSaveHours").onclick = function(){
+    var start = parseInt(document.getElementById("startHourSelect").value, 10);
+    var end = parseInt(document.getElementById("endHourSelect").value, 10);
+    if(start > end){
+      showToast("Start hour must be before end hour");
+      return;
+    }
+    workHours = { start: start, end: end };
+    saveSettings({ startHour: start, endHour: end }, function(){
+      renderSlotList();
+      closeSettingsSheet();
+      showToast("Work hours updated");
+    });
+  };
+
+  document.getElementById("btnResetHours").onclick = function(){
+    workHours = { start: 0, end: 23 };
+    saveSettings({ startHour: 0, endHour: 23 }, function(){
+      renderSlotList();
+      closeSettingsSheet();
+      showToast("Showing the full day again");
+    });
+  };
+
+  // ---------------------------------------------------------------
   // Offline badge
   // ---------------------------------------------------------------
   function updateOnlineBadge(){
@@ -926,10 +1043,13 @@
   // Init
   // ---------------------------------------------------------------
   openDb(function(){
-    refreshAll(function(){
-      renderDayNav();
-      renderSlotList();
-      updateOnlineBadge();
+    getSettings(function(s){
+      if(s){ workHours = { start: s.startHour, end: s.endHour }; }
+      refreshAll(function(){
+        renderDayNav();
+        renderSlotList();
+        updateOnlineBadge();
+      });
     });
   });
 
