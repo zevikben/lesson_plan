@@ -194,22 +194,59 @@
   }
   label.field-label:first-child{ margin-top:0; }
 
-  textarea.lesson-text{
-    width:100%; min-height:110px; resize:vertical;
-    border:1px solid var(--line); border-radius:10px; padding:12px;
-    font-family:var(--sans); font-size:15px; color:var(--ink);
-    background:var(--paper); line-height:1.45;
+  .item-row{
+    border:1px solid var(--line); border-radius:12px; padding:12px;
+    margin-bottom:10px; background:var(--paper);
   }
-  textarea.lesson-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
+  .item-top{ display:flex; gap:8px; align-items:flex-start; }
+  .item-number{
+    font-family:var(--serif); font-weight:700; font-size:13px; color:var(--gold);
+    width:20px; flex:0 0 auto; padding-top:11px; text-align:center;
+  }
+  textarea.item-text{
+    flex:1; min-height:52px; resize:vertical; width:100%;
+    border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    font-family:var(--sans); font-size:14.5px; color:var(--ink);
+    background:var(--paper-raised); line-height:1.4;
+  }
+  textarea.item-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
 
-  .song-attach{
-    border:1px dashed var(--line); border-radius:10px; padding:12px;
-    background:var(--paper);
+  .item-remove{
+    background:transparent; border:none; color:#c9a8a2; width:30px; height:30px;
+    flex:0 0 auto; cursor:pointer; padding-top:6px;
   }
-  .song-current{
-    display:flex; align-items:center; gap:10px;
+  .item-remove svg{ width:15px; height:15px; }
+
+  .item-song-area{ margin-top:8px; padding-left:28px; }
+  .item-song-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--paper-raised); border:1px solid var(--gold-soft); border-radius:20px;
+    padding:5px 6px 5px 10px; font-size:12.5px; font-weight:600;
   }
-  .song-current .name{ flex:1; min-width:0; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item-song-chip .name{ max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item-song-chip button{
+    background:none; border:none; padding:2px; cursor:pointer; display:flex; align-items:center;
+  }
+  .item-song-chip button svg{ width:13px; height:13px; }
+  .item-song-chip .play-btn{ color:var(--gold); }
+  .item-song-chip .remove-btn{ color:var(--danger); }
+
+  .item-add-song-btn{
+    background:none; border:1px dashed var(--line); border-radius:16px;
+    color:var(--ink-soft); font-size:12.5px; font-weight:600; padding:5px 12px;
+    cursor:pointer;
+  }
+
+  .item-song-picker{
+    margin-top:6px; border:1px solid var(--line); border-radius:8px; overflow:hidden;
+    background:var(--paper-raised);
+  }
+
+  .btn-add-item{
+    width:100%; border:1px dashed var(--gold-soft); background:none; color:var(--gold);
+    border-radius:12px; padding:11px; font-size:13.5px; font-weight:700; cursor:pointer;
+    margin-top:4px;
+  }
   .icon-btn{
     background:var(--ink); color:var(--paper-raised); border:none; border-radius:50%;
     width:34px; height:34px; display:flex; align-items:center; justify-content:center;
@@ -315,29 +352,10 @@
   </div>
   <div class="sheet-scroll">
 
-    <label class="field-label">Lesson notes</label>
-    <textarea class="lesson-text" id="lessonText" placeholder="What are you covering this hour?"></textarea>
-
-    <label class="field-label">Song</label>
-    <div class="song-attach" id="songAttachEmpty">
-      <div style="display:flex; gap:10px;">
-        <button class="btn secondary small" id="btnUploadSong">Add new MP3</button>
-        <button class="btn secondary small" id="btnPickSong">Choose from library</button>
-      </div>
-      <div class="song-picker-list" id="songPickerList" style="display:none;"></div>
-    </div>
-    <div class="song-attach" id="songAttachFilled" style="display:none;">
-      <div class="song-current">
-        <button class="icon-btn" id="btnPlaySong" aria-label="Play">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <div class="name" id="currentSongName"></div>
-        <button class="icon-btn ghost" id="btnRemoveSong" aria-label="Remove song">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <audio id="audioPlayer" style="width:100%; margin-top:10px; display:none;" controls></audio>
-    </div>
+    <label class="field-label">This hour's items</label>
+    <div id="itemsList"></div>
+    <button class="btn-add-item" id="btnAddItem">+ Add item</button>
+    <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
     <label class="field-label">Reuse a previous lesson</label>
     <button class="btn secondary" id="btnReuseToggle">Browse lessons already written&hellip;</button>
@@ -380,7 +398,6 @@
   var db = null;
   var currentDay = 0;
   var currentHour = null;
-  var pendingSongId = null; // song id staged for the open sheet, before Save
   var objectUrls = [];
 
   // ---------------------------------------------------------------
@@ -450,6 +467,15 @@
 
   function slotId(day, hour){ return day + "-" + hour; }
 
+  // Normalizes a saved lesson into its items array. Lessons saved before
+  // the multi-item feature only have {text, songId} - treat those as a
+  // single-item list so old data keeps working without any migration.
+  function getItems(lesson){
+    if(!lesson) return [];
+    if(lesson.items) return lesson.items;
+    return [{ text: lesson.text || "", songId: lesson.songId || null }];
+  }
+
   function refreshAll(then){
     getAllLessons(function(l){
       lessonsById = l;
@@ -497,17 +523,29 @@
     for(var h=0; h<24; h++){
       var id = slotId(currentDay, h);
       var lesson = lessonsById[id];
+      var items = getItems(lesson).filter(function(it){ return it.text || it.songId; });
       var t = fmtHour(h);
 
+      var bodyHtml;
+      if(items.length === 0){
+        bodyHtml = '<div class="slot-empty-label">Tap to add a lesson</div>';
+      } else {
+        var songCount = items.filter(function(it){ return it.songId; }).length;
+        var first = items[0];
+        bodyHtml =
+          '<div class="slot-text-preview">' +
+            (first.text ? escapeHtml(first.text) : '<em>(no text)</em>') +
+            (items.length > 1 ? ' <span style="color:var(--ink-soft); font-weight:600;">+' + (items.length-1) + ' more</span>' : '') +
+          '</div>' +
+          (songCount > 0 ? '<div class="slot-song">' + noteIcon() + songCount + ' song' + (songCount===1?"":"s") + ' attached</div>' : '');
+      }
+
       var el = document.createElement("div");
-      el.className = "slot" + (lesson ? " has-content" : "");
+      el.className = "slot" + (items.length ? " has-content" : "");
       el.innerHTML =
         '<div class="slot-row">' +
           '<div class="slot-time">' + t.label + '<span class="ampm">' + t.ampm + '</span></div>' +
-          '<div class="slot-body">' +
-            (lesson && lesson.text ? '<div class="slot-text-preview">' + escapeHtml(lesson.text) + '</div>' : '<div class="slot-empty-label">Tap to add a lesson</div>') +
-            (lesson && lesson.songId ? '<div class="slot-song">' + noteIcon() + songName(lesson.songId) + '</div>' : '') +
-          '</div>' +
+          '<div class="slot-body">' + bodyHtml + '</div>' +
           '<div class="chevron">&#8250;</div>' +
         '</div>';
       el.querySelector(".slot-row").onclick = function(hh){ return function(){ openSheet(currentDay, hh); }; }(h);
@@ -533,21 +571,23 @@
   // ---------------------------------------------------------------
   var sheetEl = document.getElementById("sheet");
   var backdropEl = document.getElementById("backdrop");
+  var currentItems = [];       // working copy of this hour's items while the sheet is open
+  var openPickerIndex = null;  // which item's "choose from library" list is currently expanded
 
   function openSheet(day, hour){
     currentDay = day; currentHour = hour;
     var lesson = lessonsById[slotId(day,hour)];
-    pendingSongId = lesson ? (lesson.songId || null) : null;
+    currentItems = getItems(lesson).map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
+    if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
+    openPickerIndex = null;
 
     var t = fmtHour(hour);
     document.getElementById("sheetTitle").textContent = t.label + " " + t.ampm;
     document.getElementById("sheetSub").textContent = DAYS[day];
-    document.getElementById("lessonText").value = lesson ? (lesson.text || "") : "";
 
-    document.getElementById("songPickerList").style.display = "none";
     document.getElementById("reuseList").style.display = "none";
     stopAudio();
-    renderSongAttachState();
+    renderItemsList();
 
     backdropEl.classList.add("open");
     sheetEl.classList.add("open");
@@ -562,90 +602,146 @@
   document.getElementById("backdrop").onclick = closeSheet;
   document.getElementById("sheetClose").onclick = closeSheet;
 
-  function renderSongAttachState(){
-    var empty = document.getElementById("songAttachEmpty");
-    var filled = document.getElementById("songAttachFilled");
-    if(pendingSongId){
-      empty.style.display = "none";
-      filled.style.display = "block";
-      document.getElementById("currentSongName").textContent = songName(pendingSongId);
-    } else {
-      empty.style.display = "block";
-      filled.style.display = "none";
+  function renderItemsList(){
+    var wrap = document.getElementById("itemsList");
+    wrap.innerHTML = "";
+
+    currentItems.forEach(function(item, idx){
+      var row = document.createElement("div");
+      row.className = "item-row";
+
+      var songHtml;
+      if(item.songId){
+        songHtml =
+          '<span class="item-song-chip">' +
+            '<button class="play-btn" data-idx="' + idx + '" data-action="play" aria-label="Play">' +
+              '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
+            '</button>' +
+            '<span class="name">' + escapeHtml(songName(item.songId)) + '</span>' +
+            '<button class="remove-btn" data-idx="' + idx + '" data-action="remove-song" aria-label="Remove song">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+            '</button>' +
+          '</span>';
+      } else {
+        songHtml =
+          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-new">+ Add new MP3</button> ' +
+          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-pick">+ Choose from library</button>' +
+          '<div class="item-song-picker" data-idx="' + idx + '" style="display:none;"></div>';
+      }
+
+      row.innerHTML =
+        '<div class="item-top">' +
+          '<div class="item-number">' + (idx+1) + '.</div>' +
+          '<textarea class="item-text" data-idx="' + idx + '" placeholder="What are you covering?">' + escapeHtml(item.text) + '</textarea>' +
+          (currentItems.length > 1
+            ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="Remove item">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>' +
+              '</button>'
+            : '') +
+        '</div>' +
+        '<div class="item-song-area">' + songHtml + '</div>';
+
+      wrap.appendChild(row);
+    });
+
+    // text edits update the in-memory array directly - no re-render, so focus/cursor is preserved
+    wrap.querySelectorAll(".item-text").forEach(function(ta){
+      ta.oninput = function(){ currentItems[+ta.dataset.idx].text = ta.value; };
+    });
+
+    // all buttons within the items list are handled through one delegated click handler
+    wrap.querySelectorAll("[data-action]").forEach(function(btn){
+      btn.onclick = function(){ handleItemAction(btn.dataset.action, +btn.dataset.idx); };
+    });
+  }
+
+  function handleItemAction(action, idx){
+    if(action === "remove-item"){
+      currentItems.splice(idx, 1);
+      renderItemsList();
+
+    } else if(action === "remove-song"){
+      currentItems[idx].songId = null;
+      renderItemsList();
+
+    } else if(action === "play"){
+      var songId = currentItems[idx].songId;
+      if(!songId) return;
+      getSong(songId, function(s){
+        if(!s) return;
+        var url = URL.createObjectURL(s.blob);
+        objectUrls.push(url);
+        audioEl.src = url;
+        audioEl.style.display = "block";
+        audioEl.play();
+      });
+
+    } else if(action === "add-song-new"){
+      pendingUploadIndex = idx;
+      document.getElementById("fileInput").click();
+
+    } else if(action === "add-song-pick"){
+      var picker = document.querySelector('.item-song-picker[data-idx="' + idx + '"]');
+      if(!picker) return;
+      if(openPickerIndex === idx){ openPickerIndex = null; picker.style.display = "none"; return; }
+      openPickerIndex = idx;
+      if(songs.length === 0){
+        picker.innerHTML = '<div class="empty-note">No songs saved yet &mdash; tap "Add new MP3" first.</div>';
+      } else {
+        picker.innerHTML = "";
+        songs.slice().sort(function(a,b){ return b.added - a.added; }).forEach(function(s){
+          var opt = document.createElement("div");
+          opt.className = "song-picker-item";
+          opt.innerHTML = '<span class="name">' + escapeHtml(s.name) + '</span>';
+          opt.onclick = function(){
+            currentItems[idx].songId = s.id;
+            openPickerIndex = null;
+            renderItemsList();
+          };
+          picker.appendChild(opt);
+        });
+      }
+      picker.style.display = "block";
     }
   }
 
-  // --- add new mp3 ---
-  document.getElementById("btnUploadSong").onclick = function(){
-    document.getElementById("fileInput").click();
+  document.getElementById("btnAddItem").onclick = function(){
+    currentItems.push({ text: "", songId: null });
+    renderItemsList();
   };
+
+  // --- add new mp3 (shared file input, used from whichever item requested it) ---
+  var pendingUploadIndex = null;
   document.getElementById("fileInput").onchange = function(e){
     var file = e.target.files[0];
-    if(!file) return;
+    if(!file || pendingUploadIndex === null) return;
+    var idx = pendingUploadIndex;
     addSong(file.name.replace(/\.mp3$/i,""), file, function(newId){
       refreshAll(function(){
-        pendingSongId = newId;
-        renderSongAttachState();
+        currentItems[idx].songId = newId;
+        renderItemsList();
         showToast("Song saved to your library");
       });
     });
     e.target.value = "";
+    pendingUploadIndex = null;
   };
 
-  // --- choose from library ---
-  document.getElementById("btnPickSong").onclick = function(){
-    var list = document.getElementById("songPickerList");
-    if(list.style.display === "block"){ list.style.display = "none"; return; }
-    if(songs.length === 0){
-      list.innerHTML = '<div class="empty-note">No songs saved yet &mdash; tap "Add new MP3" first.</div>';
-    } else {
-      list.innerHTML = "";
-      songs.slice().sort(function(a,b){ return b.added - a.added; }).forEach(function(s){
-        var item = document.createElement("div");
-        item.className = "song-picker-item";
-        item.innerHTML = '<span class="name">' + escapeHtml(s.name) + '</span>';
-        item.onclick = function(){
-          pendingSongId = s.id;
-          list.style.display = "none";
-          renderSongAttachState();
-        };
-        list.appendChild(item);
-      });
-    }
-    list.style.display = "block";
-  };
-
-  document.getElementById("btnRemoveSong").onclick = function(){
-    pendingSongId = null;
-    renderSongAttachState();
-  };
-
-  // --- playback ---
+  // --- playback (single shared audio element) ---
   var audioEl = document.getElementById("audioPlayer");
   function stopAudio(){
     audioEl.pause();
     audioEl.style.display = "none";
     audioEl.removeAttribute("src");
   }
-  document.getElementById("btnPlaySong").onclick = function(){
-    if(!pendingSongId) return;
-    getSong(pendingSongId, function(s){
-      if(!s) return;
-      var url = URL.createObjectURL(s.blob);
-      objectUrls.push(url);
-      audioEl.src = url;
-      audioEl.style.display = "block";
-      audioEl.play();
-    });
-  };
 
-  // --- reuse previous lesson ---
+  // --- reuse previous lesson (copies the whole item list) ---
   document.getElementById("btnReuseToggle").onclick = function(){
     var list = document.getElementById("reuseList");
     if(list.style.display === "block"){ list.style.display = "none"; return; }
 
     var entries = Object.keys(lessonsById).map(function(k){ return lessonsById[k]; })
-      .filter(function(l){ return l.id !== slotId(currentDay, currentHour) && (l.text || l.songId); })
+      .filter(function(l){ return l.id !== slotId(currentDay, currentHour) && getItems(l).some(function(it){ return it.text || it.songId; }); })
       .sort(function(a,b){ return (b.updated||0) - (a.updated||0); });
 
     if(entries.length === 0){
@@ -656,15 +752,20 @@
         var parts = l.id.split("-");
         var d = parseInt(parts[0],10), h = parseInt(parts[1],10);
         var t = fmtHour(h);
+        var lItems = getItems(l).filter(function(it){ return it.text || it.songId; });
+        var previewText = lItems.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
+        var songCount = lItems.filter(function(it){ return it.songId; }).length;
+
         var item = document.createElement("div");
         item.className = "reuse-item";
         item.innerHTML =
           '<div class="when">' + DAYS[d] + ", " + t.label + " " + t.ampm + '</div>' +
-          '<div class="preview">' + (l.text ? escapeHtml(l.text) : "(no notes)") + (l.songId ? " &middot; &#9835; " + songName(l.songId) : "") + '</div>';
+          '<div class="preview">' + (previewText ? previewText : "(no notes)") +
+            (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</div>';
         item.onclick = function(){
-          document.getElementById("lessonText").value = l.text || "";
-          pendingSongId = l.songId || null;
-          renderSongAttachState();
+          currentItems = lItems.map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
+          if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
+          renderItemsList();
           list.style.display = "none";
           showToast("Copied from " + DAYS[d] + " " + t.label + t.ampm);
         };
@@ -676,13 +777,15 @@
 
   // --- save / clear ---
   document.getElementById("btnSave").onclick = function(){
-    var text = document.getElementById("lessonText").value.trim();
     var id = slotId(currentDay, currentHour);
-    if(!text && !pendingSongId){
+    var cleanItems = currentItems.filter(function(it){ return it.text.trim() || it.songId; })
+      .map(function(it){ return { text: it.text.trim(), songId: it.songId }; });
+
+    if(cleanItems.length === 0){
       deleteLesson(id, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); }); });
       return;
     }
-    saveLesson({ id: id, text: text, songId: pendingSongId, updated: Date.now() }, function(){
+    saveLesson({ id: id, items: cleanItems, updated: Date.now() }, function(){
       refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("Saved"); });
     });
   };
@@ -714,7 +817,9 @@
   var libraryAudioEl = document.getElementById("libraryAudioPlayer");
 
   function usageCount(songId){
-    return Object.keys(lessonsById).filter(function(k){ return lessonsById[k].songId === songId; }).length;
+    return Object.keys(lessonsById).filter(function(k){
+      return getItems(lessonsById[k]).some(function(it){ return it.songId === songId; });
+    }).length;
   }
 
   function openLibrarySheet(){
