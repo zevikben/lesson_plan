@@ -555,12 +555,33 @@
     req.onsuccess = function(){ cb && cb(); };
   }
 
+  // Guess the right audio MIME type from a filename's extension. Forcing
+  // everything to audio/mpeg was wrong - a .m4a or .wav file mislabeled
+  // as MP3 fails to decode and shows a broken-audio error instead of
+  // playing. Falls back to audio/mpeg only when nothing else matches.
+  function guessAudioType(filename){
+    var m = /\.([a-z0-9]+)$/i.exec(filename || "");
+    var ext = m ? m[1].toLowerCase() : "";
+    var map = {
+      mp3: "audio/mpeg",
+      m4a: "audio/mp4",
+      mp4: "audio/mp4",
+      aac: "audio/aac",
+      wav: "audio/wav",
+      ogg: "audio/ogg",
+      oga: "audio/ogg",
+      flac: "audio/flac"
+    };
+    return map[ext] || "audio/mpeg";
+  }
+
   function addSong(name, blob, cb){
     // iOS Safari can refuse to play a blob whose type isn't a recognized
     // audio type - files picked from the Files app sometimes arrive with
-    // no type at all. Force it to audio/mpeg so playback is reliable.
+    // no type at all. Only fix it when it's actually missing/wrong, and
+    // guess from the file's own extension rather than assuming MP3.
     if(!blob.type || blob.type.indexOf("audio/") !== 0){
-      blob = new Blob([blob], { type: "audio/mpeg" });
+      blob = new Blob([blob], { type: guessAudioType(blob.name || name) });
     }
     var req = tx("songs","readwrite").add({ name: name, blob: blob, added: Date.now() });
     req.onsuccess = function(){ cb(req.result); };
@@ -617,15 +638,25 @@
     });
   }
 
-  // One-time, silent fix for songs saved before audio blobs were given an
-  // explicit type - those won't play on iOS Safari otherwise. Re-checks
-  // every load, but only ever writes when something is actually wrong.
+  // One-time, silent fix for songs with a wrong or missing audio type -
+  // those won't play on iOS Safari otherwise. An earlier version of this
+  // fix forced everything to audio/mpeg, which itself mislabeled non-MP3
+  // files - so this also re-checks stored types against the filename's
+  // extension and corrects any mismatch, not just missing types.
   function repairSongTypes(list, cb){
-    var toFix = list.filter(function(s){ return !s.blob || !s.blob.type || s.blob.type.indexOf("audio/") !== 0; });
+    var knownExts = { mp3:1, m4a:1, mp4:1, aac:1, wav:1, ogg:1, oga:1, flac:1 };
+    var toFix = list.filter(function(s){
+      if(!s.blob) return false;
+      var currentType = s.blob.type || "";
+      if(!currentType || currentType.indexOf("audio/") !== 0) return true;
+      var m = /\.([a-z0-9]+)$/i.exec(s.name || "");
+      var ext = m ? m[1].toLowerCase() : "";
+      return !!(ext && knownExts[ext] && guessAudioType(s.name) !== currentType);
+    });
     if(toFix.length === 0){ cb(list); return; }
     var remaining = toFix.length;
     toFix.forEach(function(s){
-      s.blob = new Blob([s.blob], { type: "audio/mpeg" });
+      s.blob = new Blob([s.blob], { type: guessAudioType(s.name) });
       var req = tx("songs","readwrite").put(s);
       req.onsuccess = function(){ if(--remaining === 0) cb(list); };
       req.onerror = function(){ if(--remaining === 0) cb(list); };
@@ -1288,7 +1319,7 @@
           Promise.all(payload.songs.map(function(s){
             return dataUrlToBlob(s.dataUrl).then(function(blob){
               if(!blob.type || blob.type.indexOf("audio/") !== 0){
-                blob = new Blob([blob], { type: "audio/mpeg" });
+                blob = new Blob([blob], { type: guessAudioType(s.name) });
               }
               return new Promise(function(resolve){
                 var req = tx("songs","readwrite").put({ id: s.id, name: s.name, added: s.added, blob: blob });
