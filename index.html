@@ -313,8 +313,11 @@
   .offline-badge.show{ display:flex; }
   .offline-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--gold); }
 
-  .header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .header-btn-group{ display:flex; gap:8px; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end; }
+  @media (max-width:480px){
+    .header-btn-group{ width:100%; justify-content:flex-start; }
+  }
   .btn-library{
     flex:0 0 auto; margin-top:2px;
     background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
@@ -553,6 +556,12 @@
   }
 
   function addSong(name, blob, cb){
+    // iOS Safari can refuse to play a blob whose type isn't a recognized
+    // audio type - files picked from the Files app sometimes arrive with
+    // no type at all. Force it to audio/mpeg so playback is reliable.
+    if(!blob.type || blob.type.indexOf("audio/") !== 0){
+      blob = new Blob([blob], { type: "audio/mpeg" });
+    }
     var req = tx("songs","readwrite").add({ name: name, blob: blob, added: Date.now() });
     req.onsuccess = function(){ cb(req.result); };
   }
@@ -600,9 +609,26 @@
     getAllLessons(function(l){
       lessonsById = l;
       getAllSongs(function(s){
-        songs = s;
-        then && then();
+        repairSongTypes(s, function(fixed){
+          songs = fixed;
+          then && then();
+        });
       });
+    });
+  }
+
+  // One-time, silent fix for songs saved before audio blobs were given an
+  // explicit type - those won't play on iOS Safari otherwise. Re-checks
+  // every load, but only ever writes when something is actually wrong.
+  function repairSongTypes(list, cb){
+    var toFix = list.filter(function(s){ return !s.blob || !s.blob.type || s.blob.type.indexOf("audio/") !== 0; });
+    if(toFix.length === 0){ cb(list); return; }
+    var remaining = toFix.length;
+    toFix.forEach(function(s){
+      s.blob = new Blob([s.blob], { type: "audio/mpeg" });
+      var req = tx("songs","readwrite").put(s);
+      req.onsuccess = function(){ if(--remaining === 0) cb(list); };
+      req.onerror = function(){ if(--remaining === 0) cb(list); };
     });
   }
 
@@ -787,7 +813,13 @@
     // fit every text box exactly to its content - no wasted blank space
     wrap.querySelectorAll(".item-text").forEach(autoSizeTextarea);
 
-    if(locked) return; // nothing below is interactive in view-only mode
+    // Play is read-only - wire it up whether or not the app is locked,
+    // so songs can always be listened to, even in Ready (view-only) mode.
+    wrap.querySelectorAll('[data-action="play"]').forEach(function(btn){
+      btn.onclick = function(){ handleItemAction("play", +btn.dataset.idx); };
+    });
+
+    if(locked) return; // nothing else below is interactive in view-only mode
 
     // text edits update the in-memory array directly - no re-render, so focus/cursor is preserved
     wrap.querySelectorAll(".item-text").forEach(function(ta){
@@ -1255,6 +1287,9 @@
         clearStore("songs", function(){
           Promise.all(payload.songs.map(function(s){
             return dataUrlToBlob(s.dataUrl).then(function(blob){
+              if(!blob.type || blob.type.indexOf("audio/") !== 0){
+                blob = new Blob([blob], { type: "audio/mpeg" });
+              }
               return new Promise(function(resolve){
                 var req = tx("songs","readwrite").put({ id: s.id, name: s.name, added: s.added, blob: blob });
                 req.onsuccess = function(){ resolve(); };
