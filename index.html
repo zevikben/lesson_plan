@@ -204,7 +204,7 @@
     width:20px; flex:0 0 auto; padding-top:11px; text-align:center;
   }
   textarea.item-text{
-    flex:1; min-height:52px; resize:vertical; width:100%;
+    flex:1; min-height:20px; resize:none; width:100%; overflow:hidden;
     border:1px solid var(--line); border-radius:8px; padding:9px 10px;
     font-family:var(--sans); font-size:14.5px; color:var(--ink);
     background:var(--paper-raised); line-height:1.4;
@@ -217,7 +217,7 @@
   }
   .item-remove svg{ width:15px; height:15px; }
 
-  .item-song-area{ margin-top:8px; padding-left:28px; }
+  .item-song-area{ margin-top:2px; padding-left:28px; }
   .item-song-chip{
     display:inline-flex; align-items:center; gap:8px;
     background:var(--paper-raised); border:1px solid var(--gold-soft); border-radius:20px;
@@ -330,6 +330,33 @@
   .library-song-item:last-child{ border-bottom:none; }
   .library-song-item .name{ flex:1; font-size:14.5px; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .library-song-item .used-count{ font-size:11px; color:var(--ink-soft); font-weight:400; display:block; margin-top:1px; }
+
+  /* ---------- Ready / lock mode ---------- */
+  .btn-ready{
+    flex:0 0 auto; margin-top:2px;
+    background:var(--gold); border:1px solid var(--gold);
+    color:var(--ink); border-radius:20px; padding:7px 14px;
+    font-size:12.5px; font-weight:700;
+    cursor:pointer; white-space:nowrap;
+  }
+  body.locked .btn-ready{
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:var(--gold-soft);
+  }
+  body.locked .edit-only{ display:none !important; }
+  .locked-badge{
+    display:none; align-items:center; gap:6px; font-size:11px; color:var(--gold-soft);
+    padding:2px 10px 10px;
+  }
+  body.locked .locked-badge{ display:flex; }
+  .locked-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--gold); }
+
+  body.locked textarea.item-text{
+    border-color:transparent; background:transparent; resize:none; padding:9px 0;
+  }
+  body.locked .item-number{ padding-top:9px; }
+
+  .transfer-row{ display:flex; gap:10px; margin-top:8px; }
+  .transfer-note{ font-size:12px; color:var(--ink-soft); margin-top:8px; line-height:1.5; }
 </style>
 </head>
 <body>
@@ -338,17 +365,19 @@
   <div class="header-row">
     <h1><span class="sub">Weekly Lesson Plan</span>Sunday &ndash; Saturday</h1>
     <div class="header-btn-group">
-      <button class="btn-library" id="btnOpenLibrary">
+      <button class="btn-library edit-only" id="btnOpenLibrary">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         Songs
       </button>
-      <button class="btn-library" id="btnOpenSettings">
+      <button class="btn-library edit-only" id="btnOpenSettings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
         Hours
       </button>
+      <button class="btn-ready" id="btnReady">Ready</button>
     </div>
   </div>
   <div class="offline-badge" id="offlineBadge"><span class="dot"></span> Offline &mdash; changes saved on this device</div>
+  <div class="locked-badge"><span class="dot"></span> Ready &mdash; view only. Tap Edit to make changes.</div>
   <nav class="days" id="dayNav"></nav>
 </header>
 <div class="staff"></div>
@@ -369,15 +398,15 @@
 
     <label class="field-label">This hour's items</label>
     <div id="itemsList"></div>
-    <button class="btn-add-item" id="btnAddItem">+ Add item</button>
+    <button class="btn-add-item edit-only" id="btnAddItem">+ Add item</button>
     <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
-    <label class="field-label">Reuse a previous lesson</label>
-    <button class="btn secondary" id="btnReuseToggle">Browse lessons already written&hellip;</button>
+    <label class="field-label edit-only">Reuse a previous lesson</label>
+    <button class="btn secondary edit-only" id="btnReuseToggle">Browse lessons already written&hellip;</button>
     <div class="reuse-list" id="reuseList" style="display:none;"></div>
 
   </div>
-  <div class="sheet-footer">
+  <div class="sheet-footer edit-only">
     <button class="btn secondary" id="btnClear">Clear hour</button>
     <button class="btn primary" id="btnSave">Save</button>
   </div>
@@ -421,6 +450,19 @@
       Lessons you've already written outside this range are kept safely &mdash;
       they just won't be shown until you widen the range again.
     </div>
+
+    <label class="field-label">Move to another device</label>
+    <div class="transfer-row">
+      <button class="btn secondary" id="btnExport">Export file&hellip;</button>
+      <button class="btn secondary" id="btnImport">Import file&hellip;</button>
+    </div>
+    <div class="transfer-note">
+      <strong>Export</strong> saves everything &mdash; every lesson, song and setting &mdash;
+      into one file. <strong>Import</strong> loads that file on another device (e.g. your
+      phone), replacing whatever is currently on this device. Send the exported file to the
+      other device however you like (AirDrop, email, Files/iCloud), then open it from the
+      Import button there.
+    </div>
   </div>
   <div class="sheet-footer">
     <button class="btn secondary" id="btnResetHours">Show full day</button>
@@ -430,6 +472,7 @@
 
 <input type="file" id="fileInput" accept="audio/mpeg,audio/mp3,.mp3">
 <input type="file" id="libraryFileInput" accept="audio/mpeg,audio/mp3,.mp3">
+<input type="file" id="importFileInput" accept="application/json,.json">
 
 <div class="toast" id="toast"></div>
 
@@ -443,6 +486,7 @@
   var workHours = { start: 0, end: 23 }; // default: show the full day, unless configured otherwise
   var currentHour = null;
   var objectUrls = [];
+  var locked = false; // "Ready" mode: view-only, no adding/editing
 
   // ---------------------------------------------------------------
   // IndexedDB setup
@@ -617,6 +661,11 @@
     return s ? escapeHtml(s.name) : "(song removed)";
   }
 
+  function autoSizeTextarea(el){
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
+
   function noteIcon(){
     return '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
   }
@@ -665,7 +714,19 @@
     var wrap = document.getElementById("itemsList");
     wrap.innerHTML = "";
 
-    currentItems.forEach(function(item, idx){
+    // In Ready (locked) mode this is a view only - drop the trailing
+    // blank placeholder item and show a simple message if there's
+    // nothing planned, instead of an editable empty row.
+    var items = locked
+      ? currentItems.filter(function(it){ return it.text.trim() || it.songId; })
+      : currentItems;
+
+    if(locked && items.length === 0){
+      wrap.innerHTML = '<div class="empty-note">Nothing planned for this hour.</div>';
+      return;
+    }
+
+    items.forEach(function(item, idx){
       var row = document.createElement("div");
       row.className = "item-row";
 
@@ -677,10 +738,13 @@
               '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
             '</button>' +
             '<span class="name">' + escapeHtml(songName(item.songId)) + '</span>' +
-            '<button class="remove-btn" data-idx="' + idx + '" data-action="remove-song" aria-label="Remove song">' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
-            '</button>' +
+            (locked ? '' :
+              '<button class="remove-btn" data-idx="' + idx + '" data-action="remove-song" aria-label="Remove song">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+              '</button>') +
           '</span>';
+      } else if(locked){
+        songHtml = "";
       } else {
         songHtml =
           '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-new">+ Add new MP3</button> ' +
@@ -691,21 +755,26 @@
       row.innerHTML =
         '<div class="item-top">' +
           '<div class="item-number">' + (idx+1) + '.</div>' +
-          '<textarea class="item-text" data-idx="' + idx + '" placeholder="What are you covering?">' + escapeHtml(item.text) + '</textarea>' +
-          (currentItems.length > 1
+          '<textarea class="item-text" data-idx="' + idx + '" placeholder="What are you covering?"' + (locked ? ' readonly' : '') + '>' + escapeHtml(item.text) + '</textarea>' +
+          (currentItems.length > 1 && !locked
             ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="Remove item">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>' +
               '</button>'
             : '') +
         '</div>' +
-        '<div class="item-song-area">' + songHtml + '</div>';
+        (songHtml ? '<div class="item-song-area">' + songHtml + '</div>' : '');
 
       wrap.appendChild(row);
     });
 
+    // fit every text box exactly to its content - no wasted blank space
+    wrap.querySelectorAll(".item-text").forEach(autoSizeTextarea);
+
+    if(locked) return; // nothing below is interactive in view-only mode
+
     // text edits update the in-memory array directly - no re-render, so focus/cursor is preserved
     wrap.querySelectorAll(".item-text").forEach(function(ta){
-      ta.oninput = function(){ currentItems[+ta.dataset.idx].text = ta.value; };
+      ta.oninput = function(){ currentItems[+ta.dataset.idx].text = ta.value; autoSizeTextarea(ta); };
     });
 
     // all buttons within the items list are handled through one delegated click handler
@@ -1003,7 +1072,7 @@
       return;
     }
     workHours = { start: start, end: end };
-    saveSettings({ startHour: start, endHour: end }, function(){
+    saveSettings({ startHour: start, endHour: end, locked: locked }, function(){
       renderSlotList();
       closeSettingsSheet();
       showToast("Work hours updated");
@@ -1012,11 +1081,169 @@
 
   document.getElementById("btnResetHours").onclick = function(){
     workHours = { start: 0, end: 23 };
-    saveSettings({ startHour: 0, endHour: 23 }, function(){
+    saveSettings({ startHour: 0, endHour: 23, locked: locked }, function(){
       renderSlotList();
       closeSettingsSheet();
       showToast("Showing the full day again");
     });
+  };
+
+  // ---------------------------------------------------------------
+  // Ready / Edit lock mode - freezes the plan into a view-only state
+  // so nothing can be added or changed by accident once it's final.
+  // ---------------------------------------------------------------
+  function applyLockedUi(){
+    document.body.classList.toggle("locked", locked);
+    var btn = document.getElementById("btnReady");
+    btn.textContent = locked ? "Edit" : "Ready";
+  }
+
+  function setLocked(val){
+    locked = val;
+    applyLockedUi();
+    saveSettings({ startHour: workHours.start, endHour: workHours.end, locked: locked }, function(){
+      renderSlotList();
+      showToast(locked ? "Marked ready - view only" : "Editing unlocked");
+    });
+  }
+
+  document.getElementById("btnReady").onclick = function(){
+    setLocked(!locked);
+  };
+
+  // ---------------------------------------------------------------
+  // Export / Import - move the whole plan (lessons, songs, settings)
+  // between devices, e.g. prepare on a laptop, then load on a phone.
+  // No server involved: this just writes/reads a single JSON file.
+  // ---------------------------------------------------------------
+  function blobToDataUrl(blob){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result); };
+      reader.onerror = function(){ reject(reader.error); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function dataUrlToBlob(dataUrl){
+    return fetch(dataUrl).then(function(r){ return r.blob(); });
+  }
+
+  function clearStore(name, cb){
+    var req = tx(name, "readwrite").clear();
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  document.getElementById("btnExport").onclick = function(){
+    var exportBtn = document.getElementById("btnExport");
+    exportBtn.disabled = true;
+    exportBtn.textContent = "Preparing\u2026";
+
+    getAllLessons(function(lessonsMap){
+      getAllSongs(function(allSongs){
+        Promise.all(allSongs.map(function(s){
+          return blobToDataUrl(s.blob).then(function(dataUrl){
+            return { id: s.id, name: s.name, added: s.added, dataUrl: dataUrl };
+          });
+        })).then(function(songsOut){
+          var payload = {
+            app: "lesson-planner",
+            version: 1,
+            exportedAt: Date.now(),
+            settings: { startHour: workHours.start, endHour: workHours.end, locked: locked },
+            lessons: Object.keys(lessonsMap).map(function(k){ return lessonsMap[k]; }),
+            songs: songsOut
+          };
+          var blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          var stamp = new Date().toISOString().slice(0,10);
+          a.href = url;
+          a.download = "lesson-plan-" + stamp + ".json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+
+          exportBtn.disabled = false;
+          exportBtn.textContent = "Export file\u2026";
+          showToast("Exported - send that file to the other device");
+        }).catch(function(err){
+          console.error("Export failed", err);
+          exportBtn.disabled = false;
+          exportBtn.textContent = "Export file\u2026";
+          showToast("Export failed - see console");
+        });
+      });
+    });
+  };
+
+  document.getElementById("btnImport").onclick = function(){
+    document.getElementById("importFileInput").click();
+  };
+
+  document.getElementById("importFileInput").onchange = function(e){
+    var file = e.target.files[0];
+    e.target.value = "";
+    if(!file) return;
+
+    if(!confirm(
+      "Import \"" + file.name + "\"?\n\n" +
+      "This replaces everything currently on this device (all lessons, " +
+      "songs and settings) with what's in the file. This can't be undone."
+    )) return;
+
+    var reader = new FileReader();
+    reader.onload = function(){
+      var payload;
+      try{ payload = JSON.parse(reader.result); }
+      catch(err){ showToast("That file isn't a valid export"); return; }
+
+      if(!payload || payload.app !== "lesson-planner" || !Array.isArray(payload.lessons) || !Array.isArray(payload.songs)){
+        showToast("That file isn't a valid export");
+        return;
+      }
+
+      showToast("Importing\u2026");
+
+      clearStore("lessons", function(){
+        clearStore("songs", function(){
+          Promise.all(payload.songs.map(function(s){
+            return dataUrlToBlob(s.dataUrl).then(function(blob){
+              return new Promise(function(resolve){
+                var req = tx("songs","readwrite").put({ id: s.id, name: s.name, added: s.added, blob: blob });
+                req.onsuccess = function(){ resolve(); };
+              });
+            });
+          })).then(function(){
+            return new Promise(function(resolve, reject){
+              var store = tx("lessons","readwrite");
+              payload.lessons.forEach(function(l){ store.put(l); });
+              store.transaction.oncomplete = resolve;
+              store.transaction.onerror = function(){ reject(store.transaction.error); };
+            });
+          }).then(function(){
+            var st = payload.settings || {};
+            workHours = { start: (typeof st.startHour === "number" ? st.startHour : 0),
+                          end: (typeof st.endHour === "number" ? st.endHour : 23) };
+            locked = !!st.locked;
+            applyLockedUi();
+            saveSettings({ startHour: workHours.start, endHour: workHours.end, locked: locked }, function(){
+              refreshAll(function(){
+                renderDayNav();
+                renderSlotList();
+                closeSettingsSheet();
+                showToast("Import complete");
+              });
+            });
+          }).catch(function(err){
+            console.error("Import failed", err);
+            showToast("Import failed - see console");
+          });
+        });
+      });
+    };
+    reader.readAsText(file);
   };
 
   // ---------------------------------------------------------------
@@ -1044,7 +1271,8 @@
   // ---------------------------------------------------------------
   openDb(function(){
     getSettings(function(s){
-      if(s){ workHours = { start: s.startHour, end: s.endHour }; }
+      if(s){ workHours = { start: s.startHour, end: s.endHour }; locked = !!s.locked; }
+      applyLockedUi();
       refreshAll(function(){
         renderDayNav();
         renderSlotList();
