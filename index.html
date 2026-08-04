@@ -195,9 +195,10 @@
   label.field-label:first-child{ margin-top:0; }
 
   .item-row{
-    border:1px solid var(--line); border-radius:12px; padding:12px;
-    margin-bottom:10px; background:var(--paper);
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
   }
+  .item-row:last-child{ border-bottom:none; }
   .item-top{ display:flex; gap:8px; align-items:flex-start; }
   .item-number{
     font-family:var(--serif); font-weight:700; font-size:13px; color:var(--gold);
@@ -795,13 +796,19 @@
     } else if(action === "play"){
       var songId = currentItems[idx].songId;
       if(!songId) return;
-      getSong(songId, function(s){
-        if(!s) return;
-        var url = URL.createObjectURL(s.blob);
-        objectUrls.push(url);
-        audioEl.src = url;
-        audioEl.style.display = "block";
-        audioEl.play();
+      // Look the song up in the already-loaded list rather than making a
+      // fresh async DB request here - on iOS Safari, .play() only counts
+      // as a direct response to the tap if nothing asynchronous happens
+      // first, otherwise playback is silently blocked.
+      var s = songs.filter(function(sg){ return sg.id === songId; })[0];
+      if(!s){ showToast("Song not found"); return; }
+      var url = URL.createObjectURL(s.blob);
+      objectUrls.push(url);
+      audioEl.src = url;
+      audioEl.style.display = "block";
+      audioEl.play().catch(function(err){
+        console.warn("Playback blocked", err);
+        showToast("Couldn't play - tap play again");
       });
 
     } else if(action === "add-song-new"){
