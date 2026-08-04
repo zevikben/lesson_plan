@@ -50,6 +50,34 @@ that, you can turn on Airplane Mode and it keeps working completely.
 - Everything is saved automatically on your phone and stays there even
   after closing the app, restarting your phone, or going offline.
 
+## Preparing on your laptop, then using it on your phone
+The app also runs in an ordinary browser, not just as an installed app —
+so you can open the same GitHub Pages URL on your laptop, plan the whole
+week there (bigger screen, real keyboard), and then move it to your phone:
+
+1. On your laptop, open the app in the browser and fill in the week.
+2. Tap **Transfer** → **Export file…**.
+   This downloads one file with everything: all lessons, songs, and settings.
+3. Get that file onto your phone — AirDrop, email it to yourself, or save
+   it to iCloud Drive/Files, whichever is easiest.
+4. On your phone, open the installed app, tap **Transfer** → **Import file…**,
+   and choose the file. This replaces whatever was already on the phone
+   with what you exported, so do this before you start editing on the
+   phone directly.
+
+You can also export from the phone and import back on the laptop the same
+way — it works in either direction.
+
+## Ready / Edit mode
+Once a week's plan is finished, tap **Ready** in the top right. The app
+switches to a clean, view-only display: notes and songs are still all
+there and playable, but nothing can be added, edited, or removed — handy
+so a final version can be handed off or displayed without stray taps
+changing it. Tap **Edit** to switch back to the normal editing screen at
+any time. This state is remembered on the device, and if you export while
+in Ready mode, the imported copy on the other device opens in Ready mode
+too.
+
 ## Updating the app later
 If you (or I) change any of these files, re-upload them to the same
 GitHub repository (Add file → Upload files, overwrite). Next time you

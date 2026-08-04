@@ -314,7 +314,7 @@
   .offline-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--gold); }
 
   .header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-  .header-btn-group{ display:flex; gap:8px; flex:0 0 auto; }
+  .header-btn-group{ display:flex; gap:8px; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end; }
   .btn-library{
     flex:0 0 auto; margin-top:2px;
     background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
@@ -373,6 +373,10 @@
       <button class="btn-library edit-only" id="btnOpenSettings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
         Hours
+      </button>
+      <button class="btn-library edit-only" id="btnOpenTransfer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M21 7H9M7 13l-4 4 4 4M3 17h12"/></svg>
+        Transfer
       </button>
       <button class="btn-ready" id="btnReady">Ready</button>
     </div>
@@ -451,8 +455,24 @@
       Lessons you've already written outside this range are kept safely &mdash;
       they just won't be shown until you widen the range again.
     </div>
+  </div>
+  <div class="sheet-footer">
+    <button class="btn secondary" id="btnResetHours">Show full day</button>
+    <button class="btn primary" id="btnSaveHours">Save</button>
+  </div>
+</div>
 
-    <label class="field-label">Move to another device</label>
+<div class="sheet-backdrop" id="transferBackdrop"></div>
+<div class="sheet" id="transferSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div>
+      <h2>Move to another device</h2>
+      <div class="day-sub">Prepare on one device, view it on another</div>
+    </div>
+    <button class="sheet-close" id="transferClose">&#10005;</button>
+  </div>
+  <div class="sheet-scroll">
     <div class="transfer-row">
       <button class="btn secondary" id="btnExport">Export file&hellip;</button>
       <button class="btn secondary" id="btnImport">Import file&hellip;</button>
@@ -464,10 +484,6 @@
       other device however you like (AirDrop, email, Files/iCloud), then open it from the
       Import button there.
     </div>
-  </div>
-  <div class="sheet-footer">
-    <button class="btn secondary" id="btnResetHours">Show full day</button>
-    <button class="btn primary" id="btnSaveHours">Save</button>
   </div>
 </div>
 
@@ -1071,6 +1087,28 @@
   document.getElementById("settingsClose").onclick = closeSettingsSheet;
   settingsBackdropEl.onclick = closeSettingsSheet;
 
+  // ---------------------------------------------------------------
+  // Transfer sheet - export/import a full copy of the plan to move
+  // it between devices. Kept separate from Hours since it isn't a
+  // setting, it's a one-off action.
+  // ---------------------------------------------------------------
+  var transferBackdropEl = document.getElementById("transferBackdrop");
+  var transferSheetEl = document.getElementById("transferSheet");
+
+  function openTransferSheet(){
+    transferBackdropEl.classList.add("open");
+    transferSheetEl.classList.add("open");
+  }
+
+  function closeTransferSheet(){
+    transferBackdropEl.classList.remove("open");
+    transferSheetEl.classList.remove("open");
+  }
+
+  document.getElementById("btnOpenTransfer").onclick = openTransferSheet;
+  document.getElementById("transferClose").onclick = closeTransferSheet;
+  transferBackdropEl.onclick = closeTransferSheet;
+
   document.getElementById("btnSaveHours").onclick = function(){
     var start = parseInt(document.getElementById("startHourSelect").value, 10);
     var end = parseInt(document.getElementById("endHourSelect").value, 10);
@@ -1239,7 +1277,7 @@
               refreshAll(function(){
                 renderDayNav();
                 renderSlotList();
-                closeSettingsSheet();
+                closeTransferSheet();
                 showToast("Import complete");
               });
             });
