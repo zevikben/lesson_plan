@@ -538,11 +538,13 @@
       req.result.forEach(function(l){ out[l.id] = l; });
       cb(out);
     };
+    req.onerror = function(){ console.error("getAllLessons failed", req.error); cb(out); };
   }
 
   function getAllSongs(cb){
     var req = tx("songs","readonly").getAll();
     req.onsuccess = function(){ cb(req.result); };
+    req.onerror = function(){ console.error("getAllSongs failed", req.error); cb([]); };
   }
 
   function saveLesson(lesson, cb){
@@ -643,24 +645,49 @@
   // fix forced everything to audio/mpeg, which itself mislabeled non-MP3
   // files - so this also re-checks stored types against the filename's
   // extension and corrects any mismatch, not just missing types.
+  //
+  // This must never be able to block the rest of the app from loading -
+  // any failure here still has to fall through to showing existing data,
+  // so every step is defensively wrapped and there's a hard timeout.
   function repairSongTypes(list, cb){
-    var knownExts = { mp3:1, m4a:1, mp4:1, aac:1, wav:1, ogg:1, oga:1, flac:1 };
-    var toFix = list.filter(function(s){
-      if(!s.blob) return false;
-      var currentType = s.blob.type || "";
-      if(!currentType || currentType.indexOf("audio/") !== 0) return true;
-      var m = /\.([a-z0-9]+)$/i.exec(s.name || "");
-      var ext = m ? m[1].toLowerCase() : "";
-      return !!(ext && knownExts[ext] && guessAudioType(s.name) !== currentType);
-    });
-    if(toFix.length === 0){ cb(list); return; }
-    var remaining = toFix.length;
-    toFix.forEach(function(s){
-      s.blob = new Blob([s.blob], { type: guessAudioType(s.name) });
-      var req = tx("songs","readwrite").put(s);
-      req.onsuccess = function(){ if(--remaining === 0) cb(list); };
-      req.onerror = function(){ if(--remaining === 0) cb(list); };
-    });
+    var done = false;
+    function finish(){ if(!done){ done = true; cb(list); } }
+    var safetyTimer = setTimeout(finish, 3000);
+
+    try {
+      var knownExts = { mp3:1, m4a:1, mp4:1, aac:1, wav:1, ogg:1, oga:1, flac:1 };
+      var toFix = list.filter(function(s){
+        try {
+          if(!s.blob) return false;
+          var currentType = s.blob.type || "";
+          if(!currentType || currentType.indexOf("audio/") !== 0) return true;
+          var m = /\.([a-z0-9]+)$/i.exec(s.name || "");
+          var ext = m ? m[1].toLowerCase() : "";
+          return !!(ext && knownExts[ext] && guessAudioType(s.name) !== currentType);
+        } catch(e){ return false; }
+      });
+
+      if(toFix.length === 0){ clearTimeout(safetyTimer); finish(); return; }
+
+      var remaining = toFix.length;
+      function stepDone(){ if(--remaining === 0){ clearTimeout(safetyTimer); finish(); } }
+
+      toFix.forEach(function(s){
+        try {
+          s.blob = new Blob([s.blob], { type: guessAudioType(s.name) });
+          var req = tx("songs","readwrite").put(s);
+          req.onsuccess = stepDone;
+          req.onerror = stepDone;
+        } catch(e){
+          console.warn("Song type repair skipped for song", s.id, e);
+          stepDone();
+        }
+      });
+    } catch(e){
+      console.error("Song type repair pass failed - continuing without it", e);
+      clearTimeout(safetyTimer);
+      finish();
+    }
   }
 
   // ---------------------------------------------------------------
