@@ -61,13 +61,18 @@ so you can open the same GitHub Pages URL on your laptop, plan the whole
 week there (bigger screen, real keyboard), and then move it to your phone:
 
 1. On your laptop, open the app in the browser and fill in the week.
-2. Tap **Transfer** → **Export file…**. On a Mac in Safari or Chrome, this
-   opens the normal macOS Share menu with **AirDrop right there** — pick
-   your iPhone and it's sent directly, no folders or cloud services
-   involved. (If sharing isn't available in your browser, it falls back
-   to downloading one file with everything — all lessons, songs, and
-   settings — which you can then send over however you like: AirDrop it
-   manually from Downloads, email it, or save it to iCloud Drive/Files.)
+2. Tap **Transfer** → **Export file…**.
+   - **Windows, Chrome/Edge**: a normal "Save As" dialog opens - navigate
+     straight into your synced iCloud Drive (or OneDrive, etc.) folder and
+     save it there. No separate upload step; it syncs to your phone on its
+     own from that point.
+   - **Mac, Safari/Chrome**: the macOS Share menu opens with **AirDrop**
+     right there - pick your iPhone and it's sent directly, no folders or
+     cloud services involved.
+   - Anywhere else: it falls back to downloading one file with everything
+     (all lessons, songs, and settings) into Downloads, which you can then
+     send over however you like - AirDrop it manually, email it, or drop
+     it into a synced cloud folder yourself.
 3. If you used AirDrop, accept it on the iPhone and choose **Save to
    Files** when prompted.
 4. On your phone, open the installed app, tap **Transfer** → **Import

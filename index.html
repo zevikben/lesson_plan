@@ -1598,26 +1598,54 @@
             showToast("Exported - send that file to the other device");
           }
 
-          // Prefer the native share sheet - it puts AirDrop (and Messages,
-          // Mail, Save to Files, etc.) right there in one tap, with no
-          // Downloads folder or cloud upload step needed. Only fall back
-          // to a plain download if the browser can't share files.
-          var file = null;
-          try { file = new File([blob], filename, { type: "application/json" }); } catch(e){ /* File() unsupported */ }
+          function tryShareOrDownload(){
+            // Native share sheet - puts AirDrop (Mac/iPhone), Messages,
+            // Mail, Save to Files, etc. right there in one tap. Only
+            // falls back to a plain download if the browser can't do it.
+            var file = null;
+            try { file = new File([blob], filename, { type: "application/json" }); } catch(e){ /* File() unsupported */ }
 
-          if(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
-            navigator.share({ files: [file], title: "Lesson Plan Export" }).then(function(){
+            if(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
+              navigator.share({ files: [file], title: "Lesson Plan Export" }).then(function(){
+                exportBtn.disabled = false;
+                exportBtn.textContent = "Export file\u2026";
+                showToast("Sent");
+              }).catch(function(err){
+                exportBtn.disabled = false;
+                exportBtn.textContent = "Export file\u2026";
+                if(err && err.name === "AbortError") return; // person cancelled the share sheet
+                fallbackDownload();
+              });
+            } else {
+              fallbackDownload();
+            }
+          }
+
+          // On Windows Chrome/Edge (no AirDrop, so the share sheet above
+          // doesn't help much), offer a native Save As dialog instead -
+          // it lets you save straight into an already-synced cloud folder
+          // (iCloud Drive, OneDrive, etc.) in one step, no separate
+          // upload needed afterward.
+          if(window.showSaveFilePicker){
+            window.showSaveFilePicker({
+              suggestedName: filename,
+              types: [{ description: "Lesson plan export", accept: { "application/json": [".json"] } }]
+            }).then(function(handle){
+              return handle.createWritable().then(function(writable){
+                return writable.write(blob).then(function(){ return writable.close(); });
+              });
+            }).then(function(){
               exportBtn.disabled = false;
               exportBtn.textContent = "Export file\u2026";
-              showToast("Sent");
+              showToast("Saved - pick that same synced folder again next time");
             }).catch(function(err){
               exportBtn.disabled = false;
               exportBtn.textContent = "Export file\u2026";
-              if(err && err.name === "AbortError") return; // person cancelled the share sheet
-              fallbackDownload();
+              if(err && err.name === "AbortError") return; // person cancelled the Save As dialog
+              tryShareOrDownload();
             });
           } else {
-            fallbackDownload();
+            tryShareOrDownload();
           }
         }).catch(function(err){
           console.error("Export failed", err);
