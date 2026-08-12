@@ -290,6 +290,12 @@
   .reuse-item:active{ background:var(--paper); }
   .reuse-item .when{ font-family:var(--serif); font-size:13.5px; font-weight:600; }
   .reuse-item .preview{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .reuse-item{ display:flex; align-items:center; gap:8px; justify-content:space-between; }
+  .reuse-item .reuse-main{ min-width:0; flex:1; }
+  .reuse-item .reuse-delete{
+    flex:0 0 auto; background:transparent; border:none; color:#c9a8a2; width:26px; height:26px; cursor:pointer;
+  }
+  .reuse-item .reuse-delete svg{ width:14px; height:14px; }
   .empty-note{ font-size:13px; color:var(--ink-soft); padding:10px 2px; }
 
   input[type=file]{ display:none; }
@@ -361,6 +367,21 @@
 
   .transfer-row{ display:flex; gap:10px; margin-top:8px; }
   .transfer-note{ font-size:12px; color:var(--ink-soft); margin-top:8px; line-height:1.5; }
+
+  .template-row{ align-items:flex-start; }
+  .template-name{ cursor:pointer; }
+  .template-detail{
+    border-bottom:1px solid var(--line); padding:2px 6px 12px 6px;
+  }
+  .template-detail-item{ padding:8px 0; }
+  .template-detail-item + .template-detail-item{ border-top:1px dashed var(--line); }
+  .template-detail-text{ font-size:13.5px; line-height:1.5; white-space:pre-wrap; }
+  .template-detail-song{ margin-top:6px; }
+  .template-detail-song .item-song-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--paper-raised); border:1px solid var(--gold-soft); border-radius:20px;
+    padding:5px 10px 5px 6px; font-size:12.5px; font-weight:600;
+  }
 </style>
 </head>
 <body>
@@ -372,6 +393,10 @@
       <button class="btn-library edit-only" id="btnOpenLibrary">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         Songs
+      </button>
+      <button class="btn-library edit-only" id="btnOpenTemplates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V4a2 2 0 00-2-2H6.5A2.5 2.5 0 004 4.5v15z"/></svg>
+        Lessons
       </button>
       <button class="btn-library edit-only" id="btnOpenSettings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
@@ -413,6 +438,13 @@
     <button class="btn secondary edit-only" id="btnReuseToggle">Browse lessons already written&hellip;</button>
     <div class="reuse-list" id="reuseList" style="display:none;"></div>
 
+    <label class="field-label edit-only">Save this lesson under a name</label>
+    <button class="btn secondary edit-only" id="btnSaveTemplate">Save to your library&hellip;</button>
+
+    <label class="field-label edit-only">Your saved lessons</label>
+    <button class="btn secondary edit-only" id="btnTemplateToggle">Browse your saved lessons&hellip;</button>
+    <div class="reuse-list" id="templateList" style="display:none;"></div>
+
   </div>
   <div class="sheet-footer edit-only">
     <button class="btn secondary" id="btnClear">Clear hour</button>
@@ -434,6 +466,22 @@
     <button class="btn primary" id="btnLibraryAddSong">Add new MP3</button>
     <audio id="libraryAudioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
     <div id="libraryList" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="templatesBackdrop"></div>
+<div class="sheet" id="templatesSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div>
+      <h2>Saved lessons</h2>
+      <div class="day-sub">Lessons you've saved under a name</div>
+    </div>
+    <button class="sheet-close" id="templatesClose">&#10005;</button>
+  </div>
+  <div class="sheet-scroll">
+    <audio id="templatesAudioPlayer" style="width:100%; margin-bottom:12px; display:none;" controls></audio>
+    <div id="templatesLibraryList"></div>
   </div>
 </div>
 
@@ -491,7 +539,7 @@
 </div>
 
 <input type="file" id="fileInput" accept="audio/mpeg,audio/mp3,.mp3">
-<input type="file" id="libraryFileInput" accept="audio/mpeg,audio/mp3,.mp3">
+<input type="file" id="libraryFileInput" accept="audio/mpeg,audio/mp3,.mp3" multiple>
 <input type="file" id="importFileInput" accept="application/json,.json">
 
 <div class="toast" id="toast"></div>
@@ -512,7 +560,7 @@
   // IndexedDB setup
   // ---------------------------------------------------------------
   function openDb(cb){
-    var req = indexedDB.open("lesson-planner", 2);
+    var req = indexedDB.open("lesson-planner", 3);
     req.onupgradeneeded = function(e){
       var d = e.target.result;
       if(!d.objectStoreNames.contains("lessons")){
@@ -523,6 +571,12 @@
       }
       if(!d.objectStoreNames.contains("settings")){
         d.createObjectStore("settings", { keyPath: "id" }); // single record, id = "config"
+      }
+      if(!d.objectStoreNames.contains("templates")){
+        // Named, standalone lessons the person explicitly saved to reuse
+        // later - independent of any specific day/hour, so they aren't
+        // overwritten when that slot gets reused the following week.
+        d.createObjectStore("templates", { keyPath: "id", autoIncrement: true });
       }
     };
     req.onsuccess = function(e){ db = e.target.result; cb(); };
@@ -599,6 +653,45 @@
     req.onsuccess = function(){ cb && cb(); };
   }
 
+  function renameSong(id, newName, cb){
+    var getReq = tx("songs","readonly").get(id);
+    getReq.onsuccess = function(){
+      var s = getReq.result;
+      if(!s){ cb && cb(); return; }
+      s.name = newName;
+      var putReq = tx("songs","readwrite").put(s);
+      putReq.onsuccess = function(){ cb && cb(); };
+    };
+  }
+
+  // --- named lesson templates (save/reuse under a custom name) ---
+  function addTemplate(name, items, cb){
+    var req = tx("templates","readwrite").add({ name: name, items: items, added: Date.now() });
+    req.onsuccess = function(){ cb && cb(req.result); };
+  }
+
+  function getAllTemplates(cb){
+    var req = tx("templates","readonly").getAll();
+    req.onsuccess = function(){ cb(req.result); };
+    req.onerror = function(){ console.error("getAllTemplates failed", req.error); cb([]); };
+  }
+
+  function deleteTemplate(id, cb){
+    var req = tx("templates","readwrite").delete(id);
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  function renameTemplate(id, newName, cb){
+    var getReq = tx("templates","readonly").get(id);
+    getReq.onsuccess = function(){
+      var t = getReq.result;
+      if(!t){ cb && cb(); return; }
+      t.name = newName;
+      var putReq = tx("templates","readwrite").put(t);
+      putReq.onsuccess = function(){ cb && cb(); };
+    };
+  }
+
   function getSettings(cb){
     var req = tx("settings","readonly").get("config");
     req.onsuccess = function(){ cb(req.result || null); };
@@ -616,6 +709,7 @@
   // ---------------------------------------------------------------
   var lessonsById = {};
   var songs = [];
+  var templates = [];
 
   function slotId(day, hour){ return day + "-" + hour; }
 
@@ -633,7 +727,10 @@
       lessonsById = l;
       getAllSongs(function(s){
         songs = normalizeSongTypesInMemory(s);
-        then && then();
+        getAllTemplates(function(t){
+          templates = t;
+          then && then();
+        });
       });
     });
   }
@@ -771,6 +868,7 @@
     document.getElementById("sheetSub").textContent = DAYS[day];
 
     document.getElementById("reuseList").style.display = "none";
+    document.getElementById("templateList").style.display = "none";
     stopAudio();
     renderItemsList();
 
@@ -976,9 +1074,11 @@
         var item = document.createElement("div");
         item.className = "reuse-item";
         item.innerHTML =
-          '<div class="when">' + DAYS[d] + ", " + t.label + " " + t.ampm + '</div>' +
-          '<div class="preview">' + (previewText ? previewText : "(no notes)") +
-            (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</div>';
+          '<div class="reuse-main">' +
+            '<div class="when">' + DAYS[d] + ", " + t.label + " " + t.ampm + '</div>' +
+            '<div class="preview">' + (previewText ? previewText : "(no notes)") +
+              (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</div>' +
+          '</div>';
         item.onclick = function(){
           currentItems = lItems.map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
           if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
@@ -989,6 +1089,79 @@
         list.appendChild(item);
       });
     }
+    list.style.display = "block";
+  };
+
+  // --- save this lesson to the named library, independent of any hour ---
+  document.getElementById("btnSaveTemplate").onclick = function(){
+    var cleanItems = currentItems.filter(function(it){ return it.text.trim() || it.songId; })
+      .map(function(it){ return { text: it.text.trim(), songId: it.songId }; });
+
+    if(cleanItems.length === 0){
+      showToast("Nothing to save yet - write something first");
+      return;
+    }
+
+    var name = prompt("Save this lesson as:", "");
+    if(name === null) return; // cancelled
+    name = name.trim();
+    if(!name){ showToast("Give it a name to save it"); return; }
+
+    addTemplate(name, cleanItems, function(){
+      refreshAll(function(){
+        showToast('Saved to your library as "' + name + '"');
+      });
+    });
+  };
+
+  // --- browse / load / delete named lessons from the library ---
+  function renderTemplateList(){
+    var list = document.getElementById("templateList");
+    if(templates.length === 0){
+      list.innerHTML = '<div class="empty-note">Nothing saved to your library yet.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    templates.slice().sort(function(a,b){ return (b.added||0) - (a.added||0); }).forEach(function(tpl){
+      var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
+      var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
+
+      var item = document.createElement("div");
+      item.className = "reuse-item";
+      item.innerHTML =
+        '<div class="reuse-main">' +
+          '<div class="when">' + escapeHtml(tpl.name) + '</div>' +
+          '<div class="preview">' + (previewText ? previewText : "(no notes)") +
+            (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</div>' +
+        '</div>' +
+        '<button class="reuse-delete" aria-label="Delete saved lesson">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+        '</button>';
+      item.querySelector(".reuse-main").onclick = function(){
+        currentItems = tpl.items.map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
+        if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
+        renderItemsList();
+        list.style.display = "none";
+        showToast('Loaded "' + tpl.name + '"');
+      };
+      item.querySelector(".reuse-delete").onclick = function(e){
+        e.stopPropagation();
+        if(!confirm('Delete "' + tpl.name + '" from your library? This can\'t be undone.')) return;
+        deleteTemplate(tpl.id, function(){
+          refreshAll(function(){
+            renderTemplateList();
+            showToast("Deleted from your library");
+          });
+        });
+      };
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById("btnTemplateToggle").onclick = function(){
+    var list = document.getElementById("templateList");
+    if(list.style.display === "block"){ list.style.display = "none"; return; }
+    renderTemplateList();
     list.style.display = "block";
   };
 
@@ -1075,6 +1248,9 @@
         '<div class="name">' + escapeHtml(s.name) +
           '<span class="used-count">' + (count === 0 ? "Not used in any hour yet" : "Used in " + count + " hour" + (count===1?"":"s")) + '</span>' +
         '</div>' +
+        '<button class="icon-btn" aria-label="Rename">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' +
+        '</button>' +
         '<button class="icon-btn ghost" aria-label="Delete">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
         '</button>';
@@ -1085,6 +1261,20 @@
         libraryAudioEl.src = url;
         libraryAudioEl.style.display = "block";
         libraryAudioEl.play();
+      };
+      row.querySelectorAll(".icon-btn")[1].onclick = function(){
+        var newName = prompt("Rename song:", s.name);
+        if(newName === null) return; // cancelled
+        newName = newName.trim();
+        if(!newName || newName === s.name) return;
+        renameSong(s.id, newName, function(){
+          refreshAll(function(){
+            renderLibraryList();
+            renderDayNav();
+            renderSlotList();
+            showToast("Song renamed");
+          });
+        });
       };
       row.querySelector(".icon-btn.ghost").onclick = function(){
         var msg = count > 0
@@ -1104,19 +1294,142 @@
     });
   }
 
+  // ---------------------------------------------------------------
+  // Standalone saved-lessons sheet - view, rename, and delete lessons
+  // saved to the named library, same pattern as the Song library above.
+  // ---------------------------------------------------------------
+  var templatesBackdropEl = document.getElementById("templatesBackdrop");
+  var templatesSheetEl = document.getElementById("templatesSheet");
+  var templatesAudioEl = document.getElementById("templatesAudioPlayer");
+
+  function openTemplatesSheet(){
+    templatesAudioEl.pause();
+    templatesAudioEl.style.display = "none";
+    renderTemplatesLibraryList();
+    templatesBackdropEl.classList.add("open");
+    templatesSheetEl.classList.add("open");
+  }
+
+  function closeTemplatesSheet(){
+    templatesBackdropEl.classList.remove("open");
+    templatesSheetEl.classList.remove("open");
+    templatesAudioEl.pause();
+  }
+
+  document.getElementById("btnOpenTemplates").onclick = openTemplatesSheet;
+  document.getElementById("templatesClose").onclick = closeTemplatesSheet;
+  templatesBackdropEl.onclick = closeTemplatesSheet;
+
+  function renderTemplatesLibraryList(){
+    var list = document.getElementById("templatesLibraryList");
+    if(templates.length === 0){
+      list.innerHTML = '<div class="empty-note">No saved lessons yet. Open any hour, write it up, and use &ldquo;Save to your library&hellip;&rdquo; to add one.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    templates.slice().sort(function(a,b){ return (b.added||0) - (a.added||0); }).forEach(function(tpl){
+      var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
+      var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
+
+      var row = document.createElement("div");
+      row.className = "library-song-item template-row";
+      row.innerHTML =
+        '<div class="name template-name">' + escapeHtml(tpl.name) +
+          '<span class="used-count">' + (previewText ? previewText : "(no notes)") +
+            (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</span>' +
+        '</div>' +
+        '<button class="icon-btn" aria-label="Rename">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' +
+        '</button>' +
+        '<button class="icon-btn ghost" aria-label="Delete">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+        '</button>';
+
+      var detail = document.createElement("div");
+      detail.className = "template-detail";
+      detail.style.display = "none";
+
+      row.querySelector(".template-name").onclick = function(){
+        if(detail.style.display === "block"){ detail.style.display = "none"; return; }
+        detail.innerHTML = "";
+        tpl.items.forEach(function(it){
+          var line = document.createElement("div");
+          line.className = "template-detail-item";
+          var songHtml = "";
+          if(it.songId){
+            songHtml =
+              '<span class="item-song-chip">' +
+                '<button class="play-btn" aria-label="Play">' +
+                  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
+                '</button>' +
+                '<span class="name">' + escapeHtml(songName(it.songId)) + '</span>' +
+              '</span>';
+          }
+          line.innerHTML =
+            '<div class="template-detail-text">' + (it.text ? escapeHtml(it.text) : "(no notes)") + '</div>' +
+            (songHtml ? '<div class="template-detail-song">' + songHtml + '</div>' : '');
+          if(it.songId){
+            line.querySelector(".play-btn").onclick = function(){
+              var s = songs.filter(function(sg){ return sg.id === it.songId; })[0];
+              if(!s){ showToast("Song not found"); return; }
+              var url = URL.createObjectURL(s.blob);
+              objectUrls.push(url);
+              templatesAudioEl.src = url;
+              templatesAudioEl.style.display = "block";
+              templatesAudioEl.play().catch(function(){ showToast("Couldn't play - tap again"); });
+            };
+          }
+          detail.appendChild(line);
+        });
+        detail.style.display = "block";
+      };
+
+      row.querySelector(".icon-btn:not(.ghost)").onclick = function(){
+        var newName = prompt("Rename saved lesson:", tpl.name);
+        if(newName === null) return;
+        newName = newName.trim();
+        if(!newName || newName === tpl.name) return;
+        renameTemplate(tpl.id, newName, function(){
+          refreshAll(function(){
+            renderTemplatesLibraryList();
+            showToast("Lesson renamed");
+          });
+        });
+      };
+      row.querySelector(".icon-btn.ghost").onclick = function(){
+        if(!confirm('Delete "' + tpl.name + '" from your library? This can\'t be undone.')) return;
+        deleteTemplate(tpl.id, function(){
+          refreshAll(function(){
+            renderTemplatesLibraryList();
+            showToast("Deleted from your library");
+          });
+        });
+      };
+
+      list.appendChild(row);
+      list.appendChild(detail);
+    });
+  }
+
   document.getElementById("btnLibraryAddSong").onclick = function(){
     document.getElementById("libraryFileInput").click();
   };
   document.getElementById("libraryFileInput").onchange = function(e){
-    var file = e.target.files[0];
-    if(!file) return;
-    addSong(file.name.replace(/\.mp3$/i,""), file, function(){
-      refreshAll(function(){
-        renderLibraryList();
-        showToast("Song added to your library");
+    var files = Array.prototype.slice.call(e.target.files);
+    e.target.value = "";
+    if(files.length === 0) return;
+
+    var remaining = files.length;
+    files.forEach(function(file){
+      addSong(file.name.replace(/\.mp3$/i,""), file, function(){
+        if(--remaining === 0){
+          refreshAll(function(){
+            renderLibraryList();
+            showToast(files.length > 1 ? files.length + " songs added to your library" : "Song added to your library");
+          });
+        }
       });
     });
-    e.target.value = "";
   };
 
   // ---------------------------------------------------------------
@@ -1252,6 +1565,7 @@
 
     getAllLessons(function(lessonsMap){
       getAllSongs(function(allSongs){
+        getAllTemplates(function(allTemplates){
         Promise.all(allSongs.map(function(s){
           return blobToDataUrl(s.blob).then(function(dataUrl){
             return { id: s.id, name: s.name, added: s.added, dataUrl: dataUrl };
@@ -1263,27 +1577,54 @@
             exportedAt: Date.now(),
             settings: { startHour: workHours.start, endHour: workHours.end, locked: locked },
             lessons: Object.keys(lessonsMap).map(function(k){ return lessonsMap[k]; }),
-            songs: songsOut
+            songs: songsOut,
+            templates: allTemplates
           };
           var blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement("a");
           var stamp = new Date().toISOString().slice(0,10);
-          a.href = url;
-          a.download = "lesson-plan-" + stamp + ".json";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+          var filename = "lesson-plan-" + stamp + ".json";
 
-          exportBtn.disabled = false;
-          exportBtn.textContent = "Export file\u2026";
-          showToast("Exported - send that file to the other device");
+          function fallbackDownload(){
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+            exportBtn.disabled = false;
+            exportBtn.textContent = "Export file\u2026";
+            showToast("Exported - send that file to the other device");
+          }
+
+          // Prefer the native share sheet - it puts AirDrop (and Messages,
+          // Mail, Save to Files, etc.) right there in one tap, with no
+          // Downloads folder or cloud upload step needed. Only fall back
+          // to a plain download if the browser can't share files.
+          var file = null;
+          try { file = new File([blob], filename, { type: "application/json" }); } catch(e){ /* File() unsupported */ }
+
+          if(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
+            navigator.share({ files: [file], title: "Lesson Plan Export" }).then(function(){
+              exportBtn.disabled = false;
+              exportBtn.textContent = "Export file\u2026";
+              showToast("Sent");
+            }).catch(function(err){
+              exportBtn.disabled = false;
+              exportBtn.textContent = "Export file\u2026";
+              if(err && err.name === "AbortError") return; // person cancelled the share sheet
+              fallbackDownload();
+            });
+          } else {
+            fallbackDownload();
+          }
         }).catch(function(err){
           console.error("Export failed", err);
           exportBtn.disabled = false;
           exportBtn.textContent = "Export file\u2026";
           showToast("Export failed - see console");
+        });
         });
       });
     });
@@ -1314,11 +1655,13 @@
         showToast("That file isn't a valid export");
         return;
       }
+      var payloadTemplates = Array.isArray(payload.templates) ? payload.templates : []; // older exports won't have this
 
       showToast("Importing\u2026");
 
       clearStore("lessons", function(){
         clearStore("songs", function(){
+          clearStore("templates", function(){
           Promise.all(payload.songs.map(function(s){
             return dataUrlToBlob(s.dataUrl).then(function(blob){
               if(!blob.type || blob.type.indexOf("audio/") !== 0){
@@ -1333,6 +1676,14 @@
             return new Promise(function(resolve, reject){
               var store = tx("lessons","readwrite");
               payload.lessons.forEach(function(l){ store.put(l); });
+              store.transaction.oncomplete = resolve;
+              store.transaction.onerror = function(){ reject(store.transaction.error); };
+            });
+          }).then(function(){
+            return new Promise(function(resolve, reject){
+              if(payloadTemplates.length === 0){ resolve(); return; }
+              var store = tx("templates","readwrite");
+              payloadTemplates.forEach(function(t){ store.put(t); });
               store.transaction.oncomplete = resolve;
               store.transaction.onerror = function(){ reject(store.transaction.error); };
             });
@@ -1353,6 +1704,7 @@
           }).catch(function(err){
             console.error("Import failed", err);
             showToast("Import failed - see console");
+          });
           });
         });
       });

@@ -47,6 +47,11 @@ that, you can turn on Airplane Mode and it keeps working completely.
 - **Choose from library**: reuse a song you've already added to any other hour.
 - **Reuse a previous lesson**: copies the text + song from any other hour
   you've already filled in, as a starting point you can still edit.
+- **Save to your library**: give a lesson its own name (e.g. "Intro to
+  Fractions") and it's kept indefinitely, separate from any specific hour
+  - reuse it under **Browse your saved lessons** any time, even weeks
+  later, without it ever being overwritten the way an hour's content is
+  when that same hour comes around again next week.
 - Everything is saved automatically on your phone and stays there even
   after closing the app, restarting your phone, or going offline.
 
@@ -56,14 +61,19 @@ so you can open the same GitHub Pages URL on your laptop, plan the whole
 week there (bigger screen, real keyboard), and then move it to your phone:
 
 1. On your laptop, open the app in the browser and fill in the week.
-2. Tap **Transfer** → **Export file…**.
-   This downloads one file with everything: all lessons, songs, and settings.
-3. Get that file onto your phone — AirDrop, email it to yourself, or save
-   it to iCloud Drive/Files, whichever is easiest.
-4. On your phone, open the installed app, tap **Transfer** → **Import file…**,
-   and choose the file. This replaces whatever was already on the phone
-   with what you exported, so do this before you start editing on the
-   phone directly.
+2. Tap **Transfer** → **Export file…**. On a Mac in Safari or Chrome, this
+   opens the normal macOS Share menu with **AirDrop right there** — pick
+   your iPhone and it's sent directly, no folders or cloud services
+   involved. (If sharing isn't available in your browser, it falls back
+   to downloading one file with everything — all lessons, songs, and
+   settings — which you can then send over however you like: AirDrop it
+   manually from Downloads, email it, or save it to iCloud Drive/Files.)
+3. If you used AirDrop, accept it on the iPhone and choose **Save to
+   Files** when prompted.
+4. On your phone, open the installed app, tap **Transfer** → **Import
+   file…**, and choose the file. This replaces whatever was already on
+   the phone with what you exported, so do this before you start editing
+   on the phone directly.
 
 You can also export from the phone and import back on the laptop the same
 way — it works in either direction.
