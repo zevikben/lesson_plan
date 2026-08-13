@@ -1004,7 +1004,7 @@
         picker.innerHTML = '<div class="empty-note">No songs saved yet &mdash; tap "Add new MP3" first.</div>';
       } else {
         picker.innerHTML = "";
-        songs.slice().sort(function(a,b){ return b.added - a.added; }).forEach(function(s){
+        songs.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(s){
           var opt = document.createElement("div");
           opt.className = "song-picker-item";
           opt.innerHTML = '<span class="name">' + escapeHtml(s.name) + '</span>';
@@ -1122,7 +1122,7 @@
       return;
     }
     list.innerHTML = "";
-    templates.slice().sort(function(a,b){ return (b.added||0) - (a.added||0); }).forEach(function(tpl){
+    templates.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
       var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
       var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
 
@@ -1237,7 +1237,7 @@
       return;
     }
     list.innerHTML = "";
-    songs.slice().sort(function(a,b){ return b.added - a.added; }).forEach(function(s){
+    songs.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(s){
       var count = usageCount(s.id);
       var row = document.createElement("div");
       row.className = "library-song-item";
@@ -1327,7 +1327,7 @@
       return;
     }
     list.innerHTML = "";
-    templates.slice().sort(function(a,b){ return (b.added||0) - (a.added||0); }).forEach(function(tpl){
+    templates.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
       var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
       var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
 
