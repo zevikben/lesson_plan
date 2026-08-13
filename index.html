@@ -410,7 +410,7 @@
     </div>
   </div>
   <div class="offline-badge" id="offlineBadge"><span class="dot"></span> Offline &mdash; changes saved on this device</div>
-  <div class="locked-badge"><span class="dot"></span> Ready &mdash; view only. Tap Edit to make changes.</div>
+  <div class="locked-badge"><span class="dot"></span> View only. Tap "Ready Mode" to switch to editing.</div>
   <nav class="days" id="dayNav"></nav>
 </header>
 <div class="staff"></div>
@@ -1519,7 +1519,7 @@
   function applyLockedUi(){
     document.body.classList.toggle("locked", locked);
     var btn = document.getElementById("btnReady");
-    btn.textContent = locked ? "Edit" : "Ready";
+    btn.textContent = locked ? "Ready Mode" : "Editing";
   }
 
   function setLocked(val){
