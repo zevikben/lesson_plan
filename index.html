@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Lesson Plan">
+<meta name="apple-mobile-web-app-title" content="מערכת שיעורים">
 <meta name="theme-color" content="#20304a">
-<title>Weekly Lesson Plan</title>
+<title>מערכת שיעורים שבועית</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
@@ -218,11 +218,11 @@
   }
   .item-remove svg{ width:15px; height:15px; }
 
-  .item-song-area{ margin-top:2px; padding-left:28px; }
+  .item-song-area{ margin-top:2px; padding-inline-start:28px; }
   .item-song-chip{
     display:inline-flex; align-items:center; gap:8px;
     background:var(--paper-raised); border:1px solid var(--gold-soft); border-radius:20px;
-    padding:5px 6px 5px 10px; font-size:12.5px; font-weight:600;
+    padding-block:5px; padding-inline:10px 6px; font-size:12.5px; font-weight:600;
   }
   .item-song-chip .name{ max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .item-song-chip button{
@@ -387,7 +387,7 @@
   .template-detail-song .item-song-chip{
     display:inline-flex; align-items:center; gap:8px;
     background:var(--paper-raised); border:1px solid var(--gold-soft); border-radius:20px;
-    padding:5px 10px 5px 6px; font-size:12.5px; font-weight:600;
+    padding-block:5px; padding-inline:6px 10px; font-size:12.5px; font-weight:600;
   }
 
   .rename-inline{
@@ -410,32 +410,32 @@
 
 <header class="app-header">
   <div class="header-row">
-    <h1><span class="sub">Weekly Lesson Plan</span>Sunday &ndash; Saturday</h1>
+    <h1><span class="sub">מערכת שיעורים שבועית</span>ראשון &ndash; שבת</h1>
     <div class="header-btn-group">
       <button class="btn-library edit-only" id="btnOpenLibrary">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-        Songs
+        שירים
       </button>
       <button class="btn-library edit-only" id="btnOpenTemplates">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V4a2 2 0 00-2-2H6.5A2.5 2.5 0 004 4.5v15z"/></svg>
-        Lessons
+        שיעורים
       </button>
       <button class="btn-library edit-only" id="btnOpenTransfer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M21 7H9M7 13l-4 4 4 4M3 17h12"/></svg>
-        Transfer
+        העברה
       </button>
-      <button class="btn-ready" id="btnReady">Ready</button>
+      <button class="btn-ready" id="btnReady">עריכה</button>
     </div>
   </div>
-  <div class="offline-badge" id="offlineBadge"><span class="dot"></span> Offline &mdash; changes saved on this device</div>
-  <div class="locked-badge"><span class="dot"></span> View only. Tap "Ready Mode" to switch to editing.</div>
+  <div class="offline-badge" id="offlineBadge"><span class="dot"></span> לא מקוון &mdash; השינויים נשמרים במכשיר זה</div>
+  <div class="locked-badge"><span class="dot"></span> תצוגה בלבד. הקש/י על "מצב מוכן" כדי לעבור לעריכה.</div>
   <nav class="days" id="dayNav"></nav>
 </header>
 <div class="staff"></div>
 
 <main id="slotList"></main>
 <div style="padding:0 16px 24px; max-width:640px; margin:0 auto;">
-  <button class="btn-add-item edit-only" id="btnAddLesson" style="margin-top:0;">+ Add lesson</button>
+  <button class="btn-add-item edit-only" id="btnAddLesson" style="margin-top:0;">+ הוספת שיעור</button>
 </div>
 
 <div class="sheet-backdrop" id="backdrop"></div>
@@ -443,37 +443,36 @@
   <div class="sheet-handle"></div>
   <div class="sheet-header">
     <div>
-      <h2><span id="sheetTitle">Lesson 1</span>
-        <button class="rename-inline edit-only" id="btnRenameLesson" aria-label="Rename lesson">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        </button>
-      </h2>
-      <div class="day-sub" id="sheetSub">Monday</div>
+      <h2><span id="sheetTitle">שיעור 1</span></h2>
+      <div class="day-sub" id="sheetSub">שני</div>
     </div>
     <button class="sheet-close" id="sheetClose">&#10005;</button>
   </div>
   <div class="sheet-scroll">
 
-    <label class="field-label">Items</label>
+    <label class="field-label" for="lessonNameInput">שם השיעור</label>
+    <input type="text" class="find-input" id="lessonNameInput" placeholder="לדוגמה: חשבון, קריאה, זמן שירה">
+
+    <label class="field-label">פריטים</label>
     <div id="itemsList"></div>
-    <button class="btn-add-item edit-only" id="btnAddItem">+ Add item</button>
+    <button class="btn-add-item edit-only" id="btnAddItem">+ הוספת פריט</button>
     <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
-    <label class="field-label edit-only">Reuse a lesson from another day</label>
-    <button class="btn secondary edit-only" id="btnReuseToggle">Browse lessons by name&hellip;</button>
+    <label class="field-label edit-only">שימוש חוזר בשיעור מיום אחר</label>
+    <button class="btn secondary edit-only" id="btnReuseToggle">עיון בשיעורים לפי שם&hellip;</button>
     <div class="reuse-list" id="reuseList" style="display:none;"></div>
 
-    <label class="field-label edit-only">Save this lesson under a name</label>
-    <button class="btn secondary edit-only" id="btnSaveTemplate">Save to your library&hellip;</button>
+    <label class="field-label edit-only">שמירת השיעור תחת שם</label>
+    <button class="btn secondary edit-only" id="btnSaveTemplate">שמירה לספרייה&hellip;</button>
 
-    <label class="field-label edit-only">Your saved lessons</label>
-    <button class="btn secondary edit-only" id="btnTemplateToggle">Browse your saved lessons&hellip;</button>
+    <label class="field-label edit-only">השיעורים השמורים שלך</label>
+    <button class="btn secondary edit-only" id="btnTemplateToggle">עיון בשיעורים השמורים&hellip;</button>
     <div class="reuse-list" id="templateList" style="display:none;"></div>
 
   </div>
   <div class="sheet-footer edit-only">
-    <button class="btn secondary" id="btnClear">Delete lesson</button>
-    <button class="btn primary" id="btnSave">Save</button>
+    <button class="btn secondary" id="btnClear">מחיקת שיעור</button>
+    <button class="btn primary" id="btnSave">שמירה</button>
   </div>
 </div>
 
@@ -482,15 +481,15 @@
   <div class="sheet-handle"></div>
   <div class="sheet-header">
     <div>
-      <h2>Song library</h2>
-      <div class="day-sub">Add songs any time &mdash; attach them to hours later</div>
+      <h2>ספריית שירים</h2>
+      <div class="day-sub">ניתן להוסיף שירים בכל עת ולצרף אותם לשיעורים מאוחר יותר</div>
     </div>
     <button class="sheet-close" id="libraryClose">&#10005;</button>
   </div>
   <div class="sheet-scroll">
-    <button class="btn primary" id="btnLibraryAddSong">Add new MP3</button>
+    <button class="btn primary" id="btnLibraryAddSong">הוספת קובץ MP3 חדש</button>
     <audio id="libraryAudioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
-    <input type="search" class="find-input" id="libraryFindInput" placeholder="Find a song&hellip;" style="margin-top:14px;">
+    <input type="search" class="find-input" id="libraryFindInput" placeholder="חיפוש שיר&hellip;" style="margin-top:14px;">
     <div id="libraryList" style="margin-top:10px;"></div>
   </div>
 </div>
@@ -500,14 +499,14 @@
   <div class="sheet-handle"></div>
   <div class="sheet-header">
     <div>
-      <h2>Saved lessons</h2>
-      <div class="day-sub">Lessons you've saved under a name</div>
+      <h2>שיעורים שמורים</h2>
+      <div class="day-sub">שיעורים ששמרת תחת שם</div>
     </div>
     <button class="sheet-close" id="templatesClose">&#10005;</button>
   </div>
   <div class="sheet-scroll">
     <audio id="templatesAudioPlayer" style="width:100%; margin-bottom:12px; display:none;" controls></audio>
-    <input type="search" class="find-input" id="templatesFindInput" placeholder="Find a saved lesson&hellip;">
+    <input type="search" class="find-input" id="templatesFindInput" placeholder="חיפוש שיעור שמור&hellip;">
     <div id="templatesLibraryList" style="margin-top:10px;"></div>
   </div>
 </div>
@@ -517,22 +516,22 @@
   <div class="sheet-handle"></div>
   <div class="sheet-header">
     <div>
-      <h2>Move to another device</h2>
-      <div class="day-sub">Prepare on one device, view it on another</div>
+      <h2>העברה למכשיר אחר</h2>
+      <div class="day-sub">הכינו במכשיר אחד וצפו במכשיר אחר</div>
     </div>
     <button class="sheet-close" id="transferClose">&#10005;</button>
   </div>
   <div class="sheet-scroll">
     <div class="transfer-row">
-      <button class="btn secondary" id="btnExport">Export file&hellip;</button>
-      <button class="btn secondary" id="btnImport">Import file&hellip;</button>
+      <button class="btn secondary" id="btnExport">ייצוא קובץ&hellip;</button>
+      <button class="btn secondary" id="btnImport">ייבוא קובץ&hellip;</button>
     </div>
     <div class="transfer-note">
-      <strong>Export</strong> saves everything &mdash; every lesson, song and setting &mdash;
-      into one file. <strong>Import</strong> loads that file on another device (e.g. your
-      phone), replacing whatever is currently on this device. Send the exported file to the
-      other device however you like (AirDrop, email, Files/iCloud), then open it from the
-      Import button there.
+      <strong>ייצוא</strong> שומר הכול &mdash; כל שיעור, שיר והגדרה &mdash;
+      לתוך קובץ אחד. <strong>ייבוא</strong> טוען את הקובץ הזה במכשיר אחר (למשל
+      הטלפון שלך), ומחליף את כל מה שקיים כרגע במכשיר זה. יש לשלוח את הקובץ
+      המיוצא למכשיר האחר בכל דרך נוחה (AirDrop, אימייל, Files/iCloud), ואז
+      לפתוח אותו משם דרך כפתור הייבוא.
     </div>
   </div>
 </div>
@@ -547,7 +546,7 @@
 (function(){
   "use strict";
 
-  var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
   var db = null;
   var currentDay = 0;
   var currentLessonId = null;   // id of the day-lesson open in the sheet, or null if it's new/unsaved
@@ -588,7 +587,7 @@
       }
     };
     req.onsuccess = function(e){ db = e.target.result; cb(); };
-    req.onerror = function(e){ console.error("DB error", e); showToast("Storage error - see console"); };
+    req.onerror = function(e){ console.error("DB error", e); showToast("שגיאת אחסון - יש לבדוק את הקונסולה"); };
   }
 
   function tx(store, mode){ return db.transaction(store, mode).objectStore(store); }
@@ -903,7 +902,7 @@
       // Every day always shows at least one lesson slot to start with -
       // this one doesn't exist in storage yet, it's created the moment
       // something is actually saved into it.
-      dayList = [{ id: null, day: currentDay, name: "Lesson 1", items: [], order: 0 }];
+      dayList = [{ id: null, day: currentDay, name: "שיעור 1", items: [], order: 0 }];
     }
 
     dayList.forEach(function(lesson){
@@ -911,16 +910,16 @@
 
       var bodyHtml;
       if(items.length === 0){
-        bodyHtml = '<div class="slot-empty-label">Tap to add content</div>';
+        bodyHtml = '<div class="slot-empty-label">הקש/י להוספת תוכן</div>';
       } else {
         var songCount = items.filter(function(it){ return it.songId; }).length;
         var first = items[0];
         bodyHtml =
           '<div class="slot-text-preview">' +
-            (first.text ? escapeHtml(first.text) : '<em>(no text)</em>') +
-            (items.length > 1 ? ' <span style="color:var(--ink-soft); font-weight:600;">+' + (items.length-1) + ' more</span>' : '') +
+            (first.text ? escapeHtml(first.text) : '<em>(אין טקסט)</em>') +
+            (items.length > 1 ? ' <span style="color:var(--ink-soft); font-weight:600;">+עוד ' + (items.length-1) + '</span>' : '') +
           '</div>' +
-          (songCount > 0 ? '<div class="slot-song">' + noteIcon() + songCount + ' song' + (songCount===1?"":"s") + ' attached</div>' : '');
+          (songCount > 0 ? '<div class="slot-song">' + noteIcon() + (songCount===1 ? 'שיר אחד מצורף' : songCount + ' שירים מצורפים') + '</div>' : '');
       }
 
       var el = document.createElement("div");
@@ -932,11 +931,11 @@
             bodyHtml +
           '</div>' +
           (lesson.id !== null ? (
-            '<button class="slot-delete edit-only" aria-label="Delete lesson" data-role="quick-delete">' +
+            '<button class="slot-delete edit-only" aria-label="מחיקת שיעור" data-role="quick-delete">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
             '</button>'
           ) : '') +
-          '<div class="chevron">&#8250;</div>' +
+          '<div class="chevron">&#8249;</div>' +
         '</div>';
       el.querySelector(".slot-row").onclick = function(id){ return function(e){
         if(e.target.closest('[data-role="quick-delete"]')) return;
@@ -947,11 +946,11 @@
         quickDelete.onclick = function(id, name, hasContent){ return function(e){
           e.stopPropagation();
           var msg = hasContent
-            ? 'Delete "' + name + '"? This can\'t be undone.'
-            : 'Delete "' + name + '"?';
+            ? 'למחוק את "' + name + '"? לא ניתן לבטל פעולה זו.'
+            : 'למחוק את "' + name + '"?';
           if(!confirm(msg)) return;
           deleteDayLesson(id, function(){
-            refreshAll(function(){ renderDayNav(); renderSlotList(); showToast("Lesson deleted"); });
+            refreshAll(function(){ renderDayNav(); renderSlotList(); showToast("השיעור נמחק"); });
           });
         }; }(lesson.id, lesson.name, items.length > 0);
       }
@@ -961,7 +960,7 @@
 
   function songName(id){
     var s = songs.filter(function(s){ return s.id === id; })[0];
-    return s ? escapeHtml(s.name) : "(song removed)";
+    return s ? escapeHtml(s.name) : "(השיר הוסר)";
   }
 
   function autoSizeTextarea(el){
@@ -999,6 +998,9 @@
 
     document.getElementById("sheetTitle").textContent = currentLessonName;
     document.getElementById("sheetSub").textContent = DAYS[day];
+    var nameInput = document.getElementById("lessonNameInput");
+    nameInput.value = currentLessonName;
+    nameInput.readOnly = locked;
 
     document.getElementById("reuseList").style.display = "none";
     document.getElementById("templateList").style.display = "none";
@@ -1011,7 +1013,7 @@
 
   function nextDefaultLessonName(day){
     var n = lessonsForDay(day).length + 1;
-    return "Lesson " + n;
+    return "שיעור " + n;
   }
 
   function closeSheet(){
@@ -1023,36 +1025,37 @@
   document.getElementById("backdrop").onclick = closeSheet;
   document.getElementById("sheetClose").onclick = closeSheet;
 
-  document.getElementById("btnRenameLesson").onclick = function(){
-    var newName = prompt("Rename this lesson:", currentLessonName);
-    if(newName === null) return;
-    newName = newName.trim();
-    if(!newName) return;
-    currentLessonName = newName;
-    document.getElementById("sheetTitle").textContent = currentLessonName;
+  // Naming a lesson happens through the always-visible name field at the
+  // top of the sheet (see below), not a popup - this keeps naming visible
+  // as part of filling the lesson in, both for a brand-new lesson and for
+  // renaming an existing one.
+  document.getElementById("lessonNameInput").oninput = function(){
+    currentLessonName = this.value;
+    document.getElementById("sheetTitle").textContent = this.value.trim() || nextDefaultLessonName(currentDay);
   };
 
   document.getElementById("btnAddLesson").onclick = function(){
     var defaultName = nextDefaultLessonName(currentDay);
-    var name = prompt("Name this lesson:", defaultName);
-    if(name === null) return; // cancelled
-    name = name.trim();
-    if(!name) name = defaultName;
     // Not saved to storage until it actually has content (Save button) -
-    // opening straight into the editor with this chosen name pre-set.
-    currentDay = currentDay; // (unchanged, for clarity)
+    // opens straight into the editor with a suggested name already filled
+    // into the name field, ready to be changed before writing the lesson.
     currentLessonId = null;
-    currentLessonName = name;
+    currentLessonName = defaultName;
     currentItems = [{ text: "", songId: null }];
     openPickerIndex = null;
     document.getElementById("sheetTitle").textContent = currentLessonName;
     document.getElementById("sheetSub").textContent = DAYS[currentDay];
+    var nameInput = document.getElementById("lessonNameInput");
+    nameInput.value = currentLessonName;
+    nameInput.readOnly = false;
     document.getElementById("reuseList").style.display = "none";
     document.getElementById("templateList").style.display = "none";
     stopAudio();
     renderItemsList();
     backdropEl.classList.add("open");
     sheetEl.classList.add("open");
+    nameInput.focus();
+    nameInput.select();
   };
 
   function renderItemsList(){
@@ -1067,7 +1070,7 @@
       : currentItems;
 
     if(locked && items.length === 0){
-      wrap.innerHTML = '<div class="empty-note">Nothing planned for this hour.</div>';
+      wrap.innerHTML = '<div class="empty-note">לא תוכנן דבר לשיעור זה.</div>';
       return;
     }
 
@@ -1079,12 +1082,12 @@
       if(item.songId){
         songHtml =
           '<span class="item-song-chip">' +
-            '<button class="play-btn" data-idx="' + idx + '" data-action="play" aria-label="Play">' +
+            '<button class="play-btn" data-idx="' + idx + '" data-action="play" aria-label="נגינה">' +
               '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
             '</button>' +
             '<span class="name">' + escapeHtml(songName(item.songId)) + '</span>' +
             (locked ? '' :
-              '<button class="remove-btn" data-idx="' + idx + '" data-action="remove-song" aria-label="Remove song">' +
+              '<button class="remove-btn" data-idx="' + idx + '" data-action="remove-song" aria-label="הסרת שיר">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
               '</button>') +
           '</span>';
@@ -1092,17 +1095,17 @@
         songHtml = "";
       } else {
         songHtml =
-          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-new">+ Add new MP3</button> ' +
-          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-pick">+ Choose from library</button>' +
+          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-new">+ הוספת קובץ MP3 חדש</button> ' +
+          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-pick">+ בחירה מהספרייה</button>' +
           '<div class="item-song-picker" data-idx="' + idx + '" style="display:none;"></div>';
       }
 
       row.innerHTML =
         '<div class="item-top">' +
           '<div class="item-number">' + (idx+1) + '.</div>' +
-          '<textarea class="item-text" data-idx="' + idx + '" placeholder="What are you covering?"' + (locked ? ' readonly' : '') + '>' + escapeHtml(item.text) + '</textarea>' +
+          '<textarea class="item-text" data-idx="' + idx + '" placeholder="מה מלמדים בשיעור הזה?"' + (locked ? ' readonly' : '') + '>' + escapeHtml(item.text) + '</textarea>' +
           (currentItems.length > 1 && !locked
-            ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="Remove item">' +
+            ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="הסרת פריט">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>' +
               '</button>'
             : '') +
@@ -1151,14 +1154,14 @@
       // as a direct response to the tap if nothing asynchronous happens
       // first, otherwise playback is silently blocked.
       var s = songs.filter(function(sg){ return sg.id === songId; })[0];
-      if(!s){ showToast("Song not found"); return; }
+      if(!s){ showToast("השיר לא נמצא"); return; }
       var url = URL.createObjectURL(s.blob);
       objectUrls.push(url);
       audioEl.src = url;
       audioEl.style.display = "block";
       audioEl.play().catch(function(err){
         console.warn("Playback blocked", err);
-        showToast("Couldn't play - tap play again");
+        showToast("לא ניתן לנגן - הקש/י שוב על נגן");
       });
 
     } else if(action === "add-song-new"){
@@ -1171,7 +1174,7 @@
       if(openPickerIndex === idx){ openPickerIndex = null; picker.style.display = "none"; return; }
       openPickerIndex = idx;
       if(songs.length === 0){
-        picker.innerHTML = '<div class="empty-note">No songs saved yet &mdash; tap "Add new MP3" first.</div>';
+        picker.innerHTML = '<div class="empty-note">עדיין אין שירים שמורים &mdash; יש להוסיף קובץ MP3 חדש קודם.</div>';
       } else {
         picker.innerHTML = "";
         songs.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(s){
@@ -1205,7 +1208,7 @@
       refreshAll(function(){
         currentItems[idx].songId = newId;
         renderItemsList();
-        showToast("Song saved to your library");
+        showToast("השיר נשמר בספרייה שלך");
       });
     });
     e.target.value = "";
@@ -1230,7 +1233,7 @@
       .sort(function(a,b){ return a.name.localeCompare(b.name); });
 
     if(entries.length === 0){
-      list.innerHTML = '<div class="empty-note">No other lessons have content yet.</div>';
+      list.innerHTML = '<div class="empty-note">אין עדיין שיעורים אחרים עם תוכן.</div>';
     } else {
       list.innerHTML = "";
       entries.forEach(function(l){
@@ -1243,15 +1246,15 @@
         item.innerHTML =
           '<div class="reuse-main">' +
             '<div class="when">' + escapeHtml(l.name) + ' <span style="font-weight:400; color:var(--ink-soft);">&middot; ' + DAYS[l.day] + '</span></div>' +
-            '<div class="preview">' + (previewText ? previewText : "(no notes)") +
-              (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</div>' +
+            '<div class="preview">' + (previewText ? previewText : "(אין הערות)") +
+              (songCount > 0 ? (songCount===1 ? " &middot; &#9835; שיר אחד" : " &middot; &#9835; " + songCount + " שירים") : "") + '</div>' +
           '</div>';
         item.onclick = function(){
           currentItems = lItems.map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
           if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
           renderItemsList();
           list.style.display = "none";
-          showToast('Copied from "' + l.name + '" (' + DAYS[l.day] + ')');
+          showToast('הועתק מ-"' + l.name + '" (' + DAYS[l.day] + ')');
         };
         list.appendChild(item);
       });
@@ -1265,18 +1268,18 @@
       .map(function(it){ return { text: it.text.trim(), songId: it.songId }; });
 
     if(cleanItems.length === 0){
-      showToast("Nothing to save yet - write something first");
+      showToast("אין עדיין מה לשמור - יש לכתוב משהו קודם");
       return;
     }
 
-    var name = prompt("Save this lesson as:", "");
+    var name = prompt("שמירת השיעור בשם:", currentLessonName || "");
     if(name === null) return; // cancelled
     name = name.trim();
-    if(!name){ showToast("Give it a name to save it"); return; }
+    if(!name){ showToast("יש לתת שם כדי לשמור"); return; }
 
     addTemplate(name, cleanItems, function(){
       refreshAll(function(){
-        showToast('Saved to your library as "' + name + '"');
+        showToast('נשמר בספרייה שלך בשם "' + name + '"');
       });
     });
   };
@@ -1285,7 +1288,7 @@
   function renderTemplateList(){
     var list = document.getElementById("templateList");
     if(templates.length === 0){
-      list.innerHTML = '<div class="empty-note">Nothing saved to your library yet.</div>';
+      list.innerHTML = '<div class="empty-note">עדיין לא נשמר דבר בספרייה שלך.</div>';
       return;
     }
     list.innerHTML = "";
@@ -1298,10 +1301,10 @@
       item.innerHTML =
         '<div class="reuse-main">' +
           '<div class="when">' + escapeHtml(tpl.name) + '</div>' +
-          '<div class="preview">' + (previewText ? previewText : "(no notes)") +
-            (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</div>' +
+          '<div class="preview">' + (previewText ? previewText : "(אין הערות)") +
+            (songCount > 0 ? (songCount===1 ? " &middot; &#9835; שיר אחד" : " &middot; &#9835; " + songCount + " שירים") : "") + '</div>' +
         '</div>' +
-        '<button class="reuse-delete" aria-label="Delete saved lesson">' +
+        '<button class="reuse-delete" aria-label="מחיקת שיעור שמור">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
         '</button>';
       item.querySelector(".reuse-main").onclick = function(){
@@ -1309,15 +1312,15 @@
         if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
         renderItemsList();
         list.style.display = "none";
-        showToast('Loaded "' + tpl.name + '"');
+        showToast('נטען "' + tpl.name + '"');
       };
       item.querySelector(".reuse-delete").onclick = function(e){
         e.stopPropagation();
-        if(!confirm('Delete "' + tpl.name + '" from your library? This can\'t be undone.')) return;
+        if(!confirm('למחוק את "' + tpl.name + '" מהספרייה שלך? לא ניתן לבטל פעולה זו.')) return;
         deleteTemplate(tpl.id, function(){
           refreshAll(function(){
             renderTemplateList();
-            showToast("Deleted from your library");
+            showToast("נמחק מהספרייה שלך");
           });
         });
       };
@@ -1346,9 +1349,11 @@
       return;
     }
 
+    var finalName = (currentLessonName || "").trim() || nextDefaultLessonName(currentDay);
+
     var record = {
       day: currentDay,
-      name: currentLessonName,
+      name: finalName,
       items: cleanItems,
       updated: Date.now(),
       order: currentLessonId !== null
@@ -1358,14 +1363,14 @@
     if(currentLessonId !== null) record.id = currentLessonId;
 
     saveDayLesson(record, function(){
-      refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("Saved"); });
+      refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("נשמר"); });
     });
   };
 
   document.getElementById("btnClear").onclick = function(){
     if(currentLessonId === null){ closeSheet(); return; }
-    if(!confirm('Delete "' + currentLessonName + '"? This can\'t be undone.')) return;
-    deleteDayLesson(currentLessonId, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("Lesson deleted"); }); });
+    if(!confirm('למחוק את "' + currentLessonName + '"? לא ניתן לבטל פעולה זו.')) return;
+    deleteDayLesson(currentLessonId, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("השיעור נמחק"); }); });
   };
 
   // ---------------------------------------------------------------
@@ -1417,14 +1422,14 @@
   function renderLibraryList(){
     var list = document.getElementById("libraryList");
     if(songs.length === 0){
-      list.innerHTML = '<div class="empty-note">No songs yet. Tap "Add new MP3" above to save one &mdash; you can attach it to any hour later.</div>';
+      list.innerHTML = '<div class="empty-note">עדיין אין שירים. הקש/י על "הוספת קובץ MP3 חדש" למעלה כדי לשמור אחד &mdash; ניתן לצרף אותו לכל שיעור מאוחר יותר.</div>';
       return;
     }
     var query = (document.getElementById("libraryFindInput").value || "").trim().toLowerCase();
     var filtered = songs.filter(function(s){ return s.name.toLowerCase().indexOf(query) !== -1; });
     list.innerHTML = "";
     if(filtered.length === 0){
-      list.innerHTML = '<div class="empty-note">No songs match &ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
+      list.innerHTML = '<div class="empty-note">אין שירים התואמים ל&ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
       return;
     }
     filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(s){
@@ -1432,16 +1437,16 @@
       var row = document.createElement("div");
       row.className = "library-song-item";
       row.innerHTML =
-        '<button class="icon-btn" aria-label="Play">' +
+        '<button class="icon-btn" aria-label="נגינה">' +
           '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
         '</button>' +
         '<div class="name">' + escapeHtml(s.name) +
-          '<span class="used-count">' + (count === 0 ? "Not used in any lesson yet" : "Used in " + count + " lesson" + (count===1?"":"s")) + '</span>' +
+          '<span class="used-count">' + (count === 0 ? "עדיין לא בשימוש באף שיעור" : (count===1 ? "בשימוש בשיעור אחד" : "בשימוש ב-" + count + " שיעורים")) + '</span>' +
         '</div>' +
-        '<button class="icon-btn" aria-label="Rename">' +
+        '<button class="icon-btn" aria-label="שינוי שם">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' +
         '</button>' +
-        '<button class="icon-btn ghost" aria-label="Delete">' +
+        '<button class="icon-btn ghost" aria-label="מחיקה">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
         '</button>';
 
@@ -1453,7 +1458,7 @@
         libraryAudioEl.play();
       };
       row.querySelectorAll(".icon-btn")[1].onclick = function(){
-        var newName = prompt("Rename song:", s.name);
+        var newName = prompt("שינוי שם השיר:", s.name);
         if(newName === null) return; // cancelled
         newName = newName.trim();
         if(!newName || newName === s.name) return;
@@ -1462,21 +1467,21 @@
             renderLibraryList();
             renderDayNav();
             renderSlotList();
-            showToast("Song renamed");
+            showToast("שם השיר עודכן");
           });
         });
       };
       row.querySelector(".icon-btn.ghost").onclick = function(){
         var msg = count > 0
-          ? 'Delete "' + s.name + '"? It\'s used in ' + count + ' lesson' + (count===1?"":"s") + " - those lessons will keep their notes but lose the song."
-          : 'Delete "' + s.name + '"?';
+          ? 'למחוק את "' + s.name + '"? השיר בשימוש ב-' + count + ' שיעור' + (count===1?"":"ים") + " - השיעורים האלה ישמרו את ההערות שלהם אך יאבדו את השיר."
+          : 'למחוק את "' + s.name + '"?';
         if(!confirm(msg)) return;
         deleteSong(s.id, function(){
           refreshAll(function(){
             renderLibraryList();
             renderDayNav();
             renderSlotList();
-            showToast("Song deleted");
+            showToast("השיר נמחק");
           });
         });
       };
@@ -1515,7 +1520,7 @@
   function renderTemplatesLibraryList(){
     var list = document.getElementById("templatesLibraryList");
     if(templates.length === 0){
-      list.innerHTML = '<div class="empty-note">No saved lessons yet. Open any hour, write it up, and use &ldquo;Save to your library&hellip;&rdquo; to add one.</div>';
+      list.innerHTML = '<div class="empty-note">עדיין אין שיעורים שמורים. פתח/י שיעור כלשהו, כתוב/כתבי אותו, והשתמש/י ב&ldquo;שמירה לספרייה&hellip;&rdquo; כדי להוסיף אחד.</div>';
       return;
     }
     var query = (document.getElementById("templatesFindInput").value || "").trim().toLowerCase();
@@ -1526,7 +1531,7 @@
     });
     list.innerHTML = "";
     if(filtered.length === 0){
-      list.innerHTML = '<div class="empty-note">No saved lessons match &ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
+      list.innerHTML = '<div class="empty-note">אין שיעורים שמורים התואמים ל&ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
       return;
     }
     filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
@@ -1537,13 +1542,13 @@
       row.className = "library-song-item template-row";
       row.innerHTML =
         '<div class="name template-name">' + escapeHtml(tpl.name) +
-          '<span class="used-count">' + (previewText ? previewText : "(no notes)") +
-            (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</span>' +
+          '<span class="used-count">' + (previewText ? previewText : "(אין הערות)") +
+            (songCount > 0 ? (songCount===1 ? " &middot; &#9835; שיר אחד" : " &middot; &#9835; " + songCount + " שירים") : "") + '</span>' +
         '</div>' +
-        '<button class="icon-btn" aria-label="Rename">' +
+        '<button class="icon-btn" aria-label="שינוי שם">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' +
         '</button>' +
-        '<button class="icon-btn ghost" aria-label="Delete">' +
+        '<button class="icon-btn ghost" aria-label="מחיקה">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
         '</button>';
 
@@ -1561,24 +1566,24 @@
           if(it.songId){
             songHtml =
               '<span class="item-song-chip">' +
-                '<button class="play-btn" aria-label="Play">' +
+                '<button class="play-btn" aria-label="נגינה">' +
                   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
                 '</button>' +
                 '<span class="name">' + escapeHtml(songName(it.songId)) + '</span>' +
               '</span>';
           }
           line.innerHTML =
-            '<div class="template-detail-text">' + (it.text ? escapeHtml(it.text) : "(no notes)") + '</div>' +
+            '<div class="template-detail-text">' + (it.text ? escapeHtml(it.text) : "(אין הערות)") + '</div>' +
             (songHtml ? '<div class="template-detail-song">' + songHtml + '</div>' : '');
           if(it.songId){
             line.querySelector(".play-btn").onclick = function(){
               var s = songs.filter(function(sg){ return sg.id === it.songId; })[0];
-              if(!s){ showToast("Song not found"); return; }
+              if(!s){ showToast("השיר לא נמצא"); return; }
               var url = URL.createObjectURL(s.blob);
               objectUrls.push(url);
               templatesAudioEl.src = url;
               templatesAudioEl.style.display = "block";
-              templatesAudioEl.play().catch(function(){ showToast("Couldn't play - tap again"); });
+              templatesAudioEl.play().catch(function(){ showToast("לא ניתן לנגן - יש לנסות שוב"); });
             };
           }
           detail.appendChild(line);
@@ -1587,23 +1592,23 @@
       };
 
       row.querySelector(".icon-btn:not(.ghost)").onclick = function(){
-        var newName = prompt("Rename saved lesson:", tpl.name);
+        var newName = prompt("שינוי שם השיעור השמור:", tpl.name);
         if(newName === null) return;
         newName = newName.trim();
         if(!newName || newName === tpl.name) return;
         renameTemplate(tpl.id, newName, function(){
           refreshAll(function(){
             renderTemplatesLibraryList();
-            showToast("Lesson renamed");
+            showToast("שם השיעור עודכן");
           });
         });
       };
       row.querySelector(".icon-btn.ghost").onclick = function(){
-        if(!confirm('Delete "' + tpl.name + '" from your library? This can\'t be undone.')) return;
+        if(!confirm('למחוק את "' + tpl.name + '" מהספרייה שלך? לא ניתן לבטל פעולה זו.')) return;
         deleteTemplate(tpl.id, function(){
           refreshAll(function(){
             renderTemplatesLibraryList();
-            showToast("Deleted from your library");
+            showToast("נמחק מהספרייה שלך");
           });
         });
       };
@@ -1629,7 +1634,7 @@
         if(--remaining === 0){
           refreshAll(function(){
             renderLibraryList();
-            showToast(files.length > 1 ? files.length + " songs added to your library" : "Song added to your library");
+            showToast(files.length > 1 ? files.length + " שירים נוספו לספרייה שלך" : "השיר נוסף לספרייה שלך");
           });
         }
       });
@@ -1664,7 +1669,7 @@
   function applyLockedUi(){
     document.body.classList.toggle("locked", locked);
     var btn = document.getElementById("btnReady");
-    btn.textContent = locked ? "Ready Mode" : "Editing";
+    btn.textContent = locked ? "מצב מוכן" : "עריכה";
   }
 
   function setLocked(val){
@@ -1673,7 +1678,7 @@
     getSettings(function(s){
       saveSettings(mergeSettings(s, { locked: locked }), function(){
         renderSlotList();
-        showToast(locked ? "Marked ready - view only" : "Editing unlocked");
+        showToast(locked ? "סומן כמוכן - תצוגה בלבד" : "מצב עריכה נפתח");
       });
     });
   }
@@ -1708,7 +1713,7 @@
   document.getElementById("btnExport").onclick = function(){
     var exportBtn = document.getElementById("btnExport");
     exportBtn.disabled = true;
-    exportBtn.textContent = "Preparing\u2026";
+    exportBtn.textContent = "\u05de\u05db\u05d9\u05df\u2026";
 
     getAllDayLessons(function(allDayLessons){
       getAllSongs(function(allSongs){
@@ -1741,8 +1746,8 @@
             document.body.removeChild(a);
             setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
             exportBtn.disabled = false;
-            exportBtn.textContent = "Export file\u2026";
-            showToast("Exported - send that file to the other device");
+            exportBtn.textContent = "\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e7\u05d5\u05d1\u05e5\u2026";
+            showToast("\u05d9\u05d5\u05e6\u05d0 - \u05d9\u05e9 \u05dc\u05e9\u05dc\u05d5\u05d7 \u05d0\u05ea \u05d4\u05e7\u05d5\u05d1\u05e5 \u05dc\u05de\u05db\u05e9\u05d9\u05e8 \u05d4\u05d0\u05d7\u05e8");
           }
 
           function tryShareOrDownload(){
@@ -1753,13 +1758,13 @@
             try { file = new File([blob], filename, { type: "application/json" }); } catch(e){ /* File() unsupported */ }
 
             if(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
-              navigator.share({ files: [file], title: "Lesson Plan Export" }).then(function(){
+              navigator.share({ files: [file], title: "\u05d9\u05d9\u05e6\u05d5\u05d0 \u05de\u05e2\u05e8\u05db\u05ea \u05e9\u05d9\u05e2\u05d5\u05e8\u05d9\u05dd" }).then(function(){
                 exportBtn.disabled = false;
-                exportBtn.textContent = "Export file\u2026";
-                showToast("Sent");
+                exportBtn.textContent = "\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e7\u05d5\u05d1\u05e5\u2026";
+                showToast("\u05e0\u05e9\u05dc\u05d7");
               }).catch(function(err){
                 exportBtn.disabled = false;
-                exportBtn.textContent = "Export file\u2026";
+                exportBtn.textContent = "\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e7\u05d5\u05d1\u05e5\u2026";
                 if(err && err.name === "AbortError") return; // person cancelled the share sheet
                 fallbackDownload();
               });
@@ -1783,11 +1788,11 @@
               });
             }).then(function(){
               exportBtn.disabled = false;
-              exportBtn.textContent = "Export file\u2026";
-              showToast("Saved - pick that same synced folder again next time");
+              exportBtn.textContent = "\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e7\u05d5\u05d1\u05e5\u2026";
+              showToast("\u05e0\u05e9\u05de\u05e8 - \u05d9\u05e9 \u05dc\u05d1\u05d7\u05d5\u05e8 \u05d1\u05d0\u05d5\u05ea\u05d4 \u05ea\u05d9\u05e7\u05d9\u05d9\u05d4 \u05de\u05e1\u05d5\u05e0\u05db\u05e8\u05e0\u05ea \u05d2\u05dd \u05d1\u05e4\u05e2\u05dd \u05d4\u05d1\u05d0\u05d4");
             }).catch(function(err){
               exportBtn.disabled = false;
-              exportBtn.textContent = "Export file\u2026";
+              exportBtn.textContent = "\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e7\u05d5\u05d1\u05e5\u2026";
               if(err && err.name === "AbortError") return; // person cancelled the Save As dialog
               tryShareOrDownload();
             });
@@ -1797,8 +1802,8 @@
         }).catch(function(err){
           console.error("Export failed", err);
           exportBtn.disabled = false;
-          exportBtn.textContent = "Export file\u2026";
-          showToast("Export failed - see console");
+          exportBtn.textContent = "\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e7\u05d5\u05d1\u05e5\u2026";
+          showToast("\u05d4\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e0\u05db\u05e9\u05dc - \u05d9\u05e9 \u05dc\u05d1\u05d3\u05d5\u05e7 \u05d0\u05ea \u05d4\u05e7\u05d5\u05e0\u05e1\u05d5\u05dc\u05d4");
         });
         });
       });
@@ -1815,21 +1820,21 @@
     if(!file) return;
 
     if(!confirm(
-      "Import \"" + file.name + "\"?\n\n" +
-      "This replaces everything currently on this device (all lessons, " +
-      "songs and settings) with what's in the file. This can't be undone."
+      "לייבא את \"" + file.name + "\"?\n\n" +
+      "פעולה זו מחליפה את כל מה שקיים כרגע במכשיר זה (כל השיעורים, " +
+      "השירים וההגדרות) בתוכן הקובץ. לא ניתן לבטל פעולה זו."
     )) return;
 
     var reader = new FileReader();
     reader.onload = function(){
       var payload;
       try{ payload = JSON.parse(reader.result); }
-      catch(err){ showToast("That file isn't a valid export"); return; }
+      catch(err){ showToast("הקובץ הזה אינו קובץ ייצוא תקין"); return; }
 
       var hasNewLessons = Array.isArray(payload && payload.dayLessons);
       var hasOldLessons = Array.isArray(payload && payload.lessons);
       if(!payload || payload.app !== "lesson-planner" || !(hasNewLessons || hasOldLessons) || !Array.isArray(payload.songs)){
-        showToast("That file isn't a valid export");
+        showToast("הקובץ הזה אינו קובץ ייצוא תקין");
         return;
       }
       var payloadTemplates = Array.isArray(payload.templates) ? payload.templates : []; // older exports won't have this
@@ -1850,7 +1855,7 @@
         };
       });
 
-      showToast("Importing\u2026");
+      showToast("\u05de\u05d9\u05d9\u05d1\u05d0\u2026");
 
       clearStore("lessons", function(){
         clearStore("songs", function(){
@@ -1894,12 +1899,12 @@
                 renderDayNav();
                 renderSlotList();
                 closeTransferSheet();
-                showToast("Import complete");
+                showToast("הייבוא הושלם");
               });
             });
           }).catch(function(err){
             console.error("Import failed", err);
-            showToast("Import failed - see console");
+            showToast("הייבוא נכשל - יש לבדוק את הקונסולה");
           });
           });
           });
