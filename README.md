@@ -40,20 +40,38 @@ still have internet, so it can save its files for offline use — after
 that, you can turn on Airplane Mode and it keeps working completely.
 
 ## Using the app
-- Tap any hour to open it, write your lesson notes, and attach a song.
+- Each day starts with one lesson slot. Tap it to name it, write notes,
+  and attach a song.
+- **+ Add lesson**: adds another named lesson to the same day - a day can
+  hold as many as you need (e.g. "Math", "Reading", "Music Time"), each
+  kept completely separate.
+- Tap the pencil next to a lesson's name (while it's open) to rename it
+  any time.
+- To remove a lesson, either open it and tap **Delete lesson**, or tap the
+  small ✕ directly on its card in the day's list.
 - **Add new MP3**: pick an audio file from your phone (e.g. from Files, or
   something you've already downloaded) — it's saved permanently inside
   the app from then on, so you never need to add that same song twice.
-- **Choose from library**: reuse a song you've already added to any other hour.
-- **Reuse a previous lesson**: copies the text + song from any other hour
-  you've already filled in, as a starting point you can still edit.
-- **Save to your library**: give a lesson its own name (e.g. "Intro to
-  Fractions") and it's kept indefinitely, separate from any specific hour
-  - reuse it under **Browse your saved lessons** any time, even weeks
-  later, without it ever being overwritten the way an hour's content is
-  when that same hour comes around again next week.
+- **Choose from library**: reuse a song you've already added to any other lesson.
+- **Reuse a lesson from another day**: browse every named lesson across
+  the whole week (sorted alphabetically) and copy one's content into the
+  lesson you're currently editing - this is how the same lesson (e.g.
+  "Times Tables") moves from one day to another.
+- **Save to your library**: on top of the above, you can also give a
+  lesson a permanent spot in a separate, long-term collection (the
+  **Lessons** button in the header) that's never tied to a specific day
+  - handy for favorites you'll want to pull from indefinitely, not just
+  this week.
+- Both the **Songs** and **Lessons** library sheets have a search box at
+  the top to jump straight to one by name when the list gets long.
 - Everything is saved automatically on your phone and stays there even
   after closing the app, restarting your phone, or going offline.
+
+If you're updating from an older version that divided each day into
+hours, nothing is lost: the very first time you open the updated app, it
+automatically converts every hour that had content into its own named
+lesson (named after that hour, e.g. "9:00 AM"), which you can then rename
+to whatever the lesson actually is.
 
 ## Preparing on your laptop, then using it on your phone
 The app also runs in an ordinary browser, not just as an installed app —
@@ -97,3 +115,10 @@ too.
 If you (or I) change any of these files, re-upload them to the same
 GitHub repository (Add file → Upload files, overwrite). Next time you
 open the app with internet on, it'll pick up the update automatically.
+
+## A note on the "Add new MP3" file picker
+Browsers and iOS control the folder that file picker opens to, for
+security reasons — a website has no way to set or change that default.
+In practice, though, both usually remember the last folder you picked
+from on their own, so after the first time, it typically already opens
+back to wherever you added a song from previously.

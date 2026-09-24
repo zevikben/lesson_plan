@@ -261,6 +261,13 @@
     width:34px; height:34px; display:flex; align-items:center; justify-content:center;
     cursor:pointer; flex:0 0 auto;
   }
+  input.find-input{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-family:var(--sans); font-size:14.5px; color:var(--ink);
+    background:var(--paper); -webkit-appearance:none;
+  }
+  input.find-input::placeholder{ color:#a9a08a; }
+  input.find-input::-webkit-search-cancel-button{ -webkit-appearance:none; }
   .icon-btn.ghost{ background:transparent; color:var(--danger); border:1px solid var(--line); }
   .icon-btn svg{ width:15px; height:15px; }
 
@@ -382,6 +389,21 @@
     background:var(--paper-raised); border:1px solid var(--gold-soft); border-radius:20px;
     padding:5px 10px 5px 6px; font-size:12.5px; font-weight:600;
   }
+
+  .rename-inline{
+    background:none; border:none; color:var(--ink-soft); padding:2px 4px; cursor:pointer;
+    vertical-align:middle; display:inline-flex; align-items:center;
+  }
+  .rename-inline svg{ width:14px; height:14px; }
+
+  .lesson-name{
+    font-family:var(--serif); font-size:15.5px; font-weight:700; color:var(--ink);
+  }
+  .slot-delete{
+    flex:0 0 auto; background:transparent; border:none; color:#c9a8a2; width:30px; height:30px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .slot-delete svg{ width:15px; height:15px; }
 </style>
 </head>
 <body>
@@ -398,10 +420,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V4a2 2 0 00-2-2H6.5A2.5 2.5 0 004 4.5v15z"/></svg>
         Lessons
       </button>
-      <button class="btn-library edit-only" id="btnOpenSettings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-        Hours
-      </button>
       <button class="btn-library edit-only" id="btnOpenTransfer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M21 7H9M7 13l-4 4 4 4M3 17h12"/></svg>
         Transfer
@@ -416,26 +434,33 @@
 <div class="staff"></div>
 
 <main id="slotList"></main>
+<div style="padding:0 16px 24px; max-width:640px; margin:0 auto;">
+  <button class="btn-add-item edit-only" id="btnAddLesson" style="margin-top:0;">+ Add lesson</button>
+</div>
 
 <div class="sheet-backdrop" id="backdrop"></div>
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
   <div class="sheet-header">
     <div>
-      <h2 id="sheetTitle">9:00</h2>
+      <h2><span id="sheetTitle">Lesson 1</span>
+        <button class="rename-inline edit-only" id="btnRenameLesson" aria-label="Rename lesson">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+      </h2>
       <div class="day-sub" id="sheetSub">Monday</div>
     </div>
     <button class="sheet-close" id="sheetClose">&#10005;</button>
   </div>
   <div class="sheet-scroll">
 
-    <label class="field-label">This hour's items</label>
+    <label class="field-label">Items</label>
     <div id="itemsList"></div>
     <button class="btn-add-item edit-only" id="btnAddItem">+ Add item</button>
     <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
-    <label class="field-label edit-only">Reuse a previous lesson</label>
-    <button class="btn secondary edit-only" id="btnReuseToggle">Browse lessons already written&hellip;</button>
+    <label class="field-label edit-only">Reuse a lesson from another day</label>
+    <button class="btn secondary edit-only" id="btnReuseToggle">Browse lessons by name&hellip;</button>
     <div class="reuse-list" id="reuseList" style="display:none;"></div>
 
     <label class="field-label edit-only">Save this lesson under a name</label>
@@ -447,7 +472,7 @@
 
   </div>
   <div class="sheet-footer edit-only">
-    <button class="btn secondary" id="btnClear">Clear hour</button>
+    <button class="btn secondary" id="btnClear">Delete lesson</button>
     <button class="btn primary" id="btnSave">Save</button>
   </div>
 </div>
@@ -465,7 +490,8 @@
   <div class="sheet-scroll">
     <button class="btn primary" id="btnLibraryAddSong">Add new MP3</button>
     <audio id="libraryAudioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
-    <div id="libraryList" style="margin-top:16px;"></div>
+    <input type="search" class="find-input" id="libraryFindInput" placeholder="Find a song&hellip;" style="margin-top:14px;">
+    <div id="libraryList" style="margin-top:10px;"></div>
   </div>
 </div>
 
@@ -481,35 +507,8 @@
   </div>
   <div class="sheet-scroll">
     <audio id="templatesAudioPlayer" style="width:100%; margin-bottom:12px; display:none;" controls></audio>
-    <div id="templatesLibraryList"></div>
-  </div>
-</div>
-
-<div class="sheet-backdrop" id="settingsBackdrop"></div>
-<div class="sheet" id="settingsSheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <div>
-      <h2>Work hours</h2>
-      <div class="day-sub">Choose which hours show up in the daily list</div>
-    </div>
-    <button class="sheet-close" id="settingsClose">&#10005;</button>
-  </div>
-  <div class="sheet-scroll">
-    <label class="field-label">Start hour</label>
-    <select class="hour-select" id="startHourSelect"></select>
-
-    <label class="field-label">End hour</label>
-    <select class="hour-select" id="endHourSelect"></select>
-
-    <div class="empty-note" style="margin-top:14px;">
-      Lessons you've already written outside this range are kept safely &mdash;
-      they just won't be shown until you widen the range again.
-    </div>
-  </div>
-  <div class="sheet-footer">
-    <button class="btn secondary" id="btnResetHours">Show full day</button>
-    <button class="btn primary" id="btnSaveHours">Save</button>
+    <input type="search" class="find-input" id="templatesFindInput" placeholder="Find a saved lesson&hellip;">
+    <div id="templatesLibraryList" style="margin-top:10px;"></div>
   </div>
 </div>
 
@@ -551,8 +550,8 @@
   var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   var db = null;
   var currentDay = 0;
-  var workHours = { start: 0, end: 23 }; // default: show the full day, unless configured otherwise
-  var currentHour = null;
+  var currentLessonId = null;   // id of the day-lesson open in the sheet, or null if it's new/unsaved
+  var currentLessonName = "";   // working copy of the open lesson's name
   var objectUrls = [];
   var locked = false; // "Ready" mode: view-only, no adding/editing
 
@@ -560,11 +559,14 @@
   // IndexedDB setup
   // ---------------------------------------------------------------
   function openDb(cb){
-    var req = indexedDB.open("lesson-planner", 3);
+    var req = indexedDB.open("lesson-planner", 4);
     req.onupgradeneeded = function(e){
       var d = e.target.result;
       if(!d.objectStoreNames.contains("lessons")){
-        d.createObjectStore("lessons", { keyPath: "id" }); // id = "day-hour"
+        // Legacy hour-based store (id = "day-hour"). No longer written to
+        // going forward - kept only so nothing is lost, and so it can
+        // still be migrated from on an older device/export.
+        d.createObjectStore("lessons", { keyPath: "id" });
       }
       if(!d.objectStoreNames.contains("songs")){
         d.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
@@ -574,9 +576,15 @@
       }
       if(!d.objectStoreNames.contains("templates")){
         // Named, standalone lessons the person explicitly saved to reuse
-        // later - independent of any specific day/hour, so they aren't
-        // overwritten when that slot gets reused the following week.
+        // later - independent of any specific day, so they aren't
+        // overwritten when a day's own lesson list changes.
         d.createObjectStore("templates", { keyPath: "id", autoIncrement: true });
+      }
+      if(!d.objectStoreNames.contains("dayLessons")){
+        // The current model: each day holds an ordered list of named
+        // lessons (not hours). { id, day, name, items, order, updated }
+        var store = d.createObjectStore("dayLessons", { keyPath: "id", autoIncrement: true });
+        store.createIndex("day", "day", { unique: false });
       }
     };
     req.onsuccess = function(e){ db = e.target.result; cb(); };
@@ -608,6 +616,28 @@
 
   function deleteLesson(id, cb){
     var req = tx("lessons","readwrite").delete(id);
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  // --- day lessons: each day holds an ordered list of named lessons ---
+  function getAllDayLessons(cb){
+    var req = tx("dayLessons","readonly").getAll();
+    req.onsuccess = function(){ cb(req.result); };
+    req.onerror = function(){ console.error("getAllDayLessons failed", req.error); cb([]); };
+  }
+
+  function saveDayLesson(lesson, cb){
+    var req = tx("dayLessons","readwrite").put(lesson);
+    req.onsuccess = function(){ cb && cb(req.result); };
+  }
+
+  function deleteDayLesson(id, cb){
+    var req = tx("dayLessons","readwrite").delete(id);
+    req.onsuccess = function(){ cb && cb(); };
+  }
+
+  function clearDayLessonsStore(cb){
+    var req = tx("dayLessons","readwrite").clear();
     req.onsuccess = function(){ cb && cb(); };
   }
 
@@ -707,11 +737,9 @@
   // ---------------------------------------------------------------
   // State cache (kept in sync with DB, drives rendering)
   // ---------------------------------------------------------------
-  var lessonsById = {};
   var songs = [];
   var templates = [];
-
-  function slotId(day, hour){ return day + "-" + hour; }
+  var dayLessons = []; // every named lesson across every day: { id, day, name, items, order, updated }
 
   // Normalizes a saved lesson into its items array. Lessons saved before
   // the multi-item feature only have {text, songId} - treat those as a
@@ -722,9 +750,14 @@
     return [{ text: lesson.text || "", songId: lesson.songId || null }];
   }
 
+  function lessonsForDay(day){
+    return dayLessons.filter(function(l){ return l.day === day; })
+      .sort(function(a,b){ return (a.order||0) - (b.order||0); });
+  }
+
   function refreshAll(then){
-    getAllLessons(function(l){
-      lessonsById = l;
+    getAllDayLessons(function(dl){
+      dayLessons = dl;
       getAllSongs(function(s){
         songs = normalizeSongTypesInMemory(s);
         getAllTemplates(function(t){
@@ -733,6 +766,73 @@
         });
       });
     });
+  }
+
+  // One-time migration from the old hour-based grid to named lessons per
+  // day. Runs once (tracked in settings.migratedToNamedLessons) and never
+  // deletes the old data - it only copies it into the new store, so a
+  // failure here can't lose anything that existed before. Each populated
+  // hour becomes its own named lesson (named after that hour, e.g.
+  // "9:00 AM"), keeping all its notes and songs, in the same order the
+  // hours used to appear in.
+  function migrateHourLessonsIfNeeded(cb){
+    getSettings(function(s){
+      if(s && s.migratedToNamedLessons){ cb(); return; }
+      getAllLessons(function(oldLessonsMap){
+        var oldIds = Object.keys(oldLessonsMap);
+        if(oldIds.length === 0){
+          saveSettings(mergeSettings(s, { migratedToNamedLessons: true }), function(){ cb(); });
+          return;
+        }
+        // Guard against creating duplicates if a previous run got partway
+        // through (e.g. the app closed mid-migration) before the flag
+        // below was saved - in that case dayLessons already has entries,
+        // so just mark migration done rather than copying everything again.
+        getAllDayLessons(function(existing){
+          if(existing.length > 0){
+            saveSettings(mergeSettings(s, { migratedToNamedLessons: true }), function(){ cb(); });
+            return;
+          }
+          runMigration();
+        });
+
+        function runMigration(){
+        try {
+          var toCreate = oldIds.map(function(id){
+            var parts = id.split("-");
+            var day = parseInt(parts[0], 10);
+            var hour = parseInt(parts[1], 10);
+            var lesson = oldLessonsMap[id];
+            var t = fmtHour(hour);
+            return {
+              day: day,
+              name: t.label + " " + t.ampm,
+              items: getItems(lesson),
+              order: hour,
+              updated: lesson.updated || Date.now()
+            };
+          });
+          var remaining = toCreate.length;
+          toCreate.forEach(function(rec){
+            saveDayLesson(rec, function(){
+              if(--remaining === 0){
+                saveSettings(mergeSettings(s, { migratedToNamedLessons: true }), function(){ cb(); });
+              }
+            });
+          });
+        } catch(e){
+          console.error("Migration failed - leaving old data in place, continuing", e);
+          cb();
+        }
+        }
+      });
+    });
+  }
+
+  function mergeSettings(existing, patch){
+    var base = existing ? JSON.parse(JSON.stringify(existing)) : {};
+    for(var k in patch){ base[k] = patch[k]; }
+    return base;
   }
 
   // Fixes a wrong/missing audio type for playback purposes only, entirely
@@ -767,9 +867,7 @@
   // Rendering: day nav
   // ---------------------------------------------------------------
   function countForDay(day){
-    var n = 0;
-    for(var h=0; h<24; h++){ if(lessonsById[slotId(day,h)]) n++; }
-    return n;
+    return lessonsForDay(day).length;
   }
 
   function renderDayNav(){
@@ -785,27 +883,35 @@
     });
   }
 
-  // ---------------------------------------------------------------
-  // Rendering: hour list for current day
-  // ---------------------------------------------------------------
+  // fmtHour is kept only for labeling lessons migrated from the old
+  // hour-based grid (e.g. naming a migrated slot "9:00 AM").
   function fmtHour(h){
     var ampm = h < 12 ? "AM" : "PM";
     var h12 = h % 12; if(h12 === 0) h12 = 12;
     return { label: h12 + ":00", ampm: ampm };
   }
 
+  // ---------------------------------------------------------------
+  // Rendering: named lesson list for the current day
+  // ---------------------------------------------------------------
   function renderSlotList(){
     var main = document.getElementById("slotList");
     main.innerHTML = "";
-    for(var h=workHours.start; h<=workHours.end; h++){
-      var id = slotId(currentDay, h);
-      var lesson = lessonsById[id];
+    var dayList = lessonsForDay(currentDay);
+
+    if(dayList.length === 0){
+      // Every day always shows at least one lesson slot to start with -
+      // this one doesn't exist in storage yet, it's created the moment
+      // something is actually saved into it.
+      dayList = [{ id: null, day: currentDay, name: "Lesson 1", items: [], order: 0 }];
+    }
+
+    dayList.forEach(function(lesson){
       var items = getItems(lesson).filter(function(it){ return it.text || it.songId; });
-      var t = fmtHour(h);
 
       var bodyHtml;
       if(items.length === 0){
-        bodyHtml = '<div class="slot-empty-label">Tap to add a lesson</div>';
+        bodyHtml = '<div class="slot-empty-label">Tap to add content</div>';
       } else {
         var songCount = items.filter(function(it){ return it.songId; }).length;
         var first = items[0];
@@ -821,13 +927,36 @@
       el.className = "slot" + (items.length ? " has-content" : "");
       el.innerHTML =
         '<div class="slot-row">' +
-          '<div class="slot-time">' + t.label + '<span class="ampm">' + t.ampm + '</span></div>' +
-          '<div class="slot-body">' + bodyHtml + '</div>' +
+          '<div class="slot-body">' +
+            '<div class="lesson-name">' + escapeHtml(lesson.name) + '</div>' +
+            bodyHtml +
+          '</div>' +
+          (lesson.id !== null ? (
+            '<button class="slot-delete edit-only" aria-label="Delete lesson" data-role="quick-delete">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+            '</button>'
+          ) : '') +
           '<div class="chevron">&#8250;</div>' +
         '</div>';
-      el.querySelector(".slot-row").onclick = function(hh){ return function(){ openSheet(currentDay, hh); }; }(h);
+      el.querySelector(".slot-row").onclick = function(id){ return function(e){
+        if(e.target.closest('[data-role="quick-delete"]')) return;
+        openLessonSheet(currentDay, id);
+      }; }(lesson.id);
+      var quickDelete = el.querySelector('[data-role="quick-delete"]');
+      if(quickDelete){
+        quickDelete.onclick = function(id, name, hasContent){ return function(e){
+          e.stopPropagation();
+          var msg = hasContent
+            ? 'Delete "' + name + '"? This can\'t be undone.'
+            : 'Delete "' + name + '"?';
+          if(!confirm(msg)) return;
+          deleteDayLesson(id, function(){
+            refreshAll(function(){ renderDayNav(); renderSlotList(); showToast("Lesson deleted"); });
+          });
+        }; }(lesson.id, lesson.name, items.length > 0);
+      }
       main.appendChild(el);
-    }
+    });
   }
 
   function songName(id){
@@ -853,18 +982,22 @@
   // ---------------------------------------------------------------
   var sheetEl = document.getElementById("sheet");
   var backdropEl = document.getElementById("backdrop");
-  var currentItems = [];       // working copy of this hour's items while the sheet is open
+  var currentItems = [];       // working copy of this lesson's items while the sheet is open
   var openPickerIndex = null;  // which item's "choose from library" list is currently expanded
 
-  function openSheet(day, hour){
-    currentDay = day; currentHour = hour;
-    var lesson = lessonsById[slotId(day,hour)];
+  // lessonId is null for a new, not-yet-saved lesson (the day's default
+  // starter slot, or one just created with "+ Add lesson").
+  function openLessonSheet(day, lessonId){
+    currentDay = day;
+    currentLessonId = lessonId;
+
+    var lesson = lessonId === null ? null : dayLessons.filter(function(l){ return l.id === lessonId; })[0];
+    currentLessonName = lesson ? lesson.name : nextDefaultLessonName(day);
     currentItems = getItems(lesson).map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
     if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
     openPickerIndex = null;
 
-    var t = fmtHour(hour);
-    document.getElementById("sheetTitle").textContent = t.label + " " + t.ampm;
+    document.getElementById("sheetTitle").textContent = currentLessonName;
     document.getElementById("sheetSub").textContent = DAYS[day];
 
     document.getElementById("reuseList").style.display = "none";
@@ -876,6 +1009,11 @@
     sheetEl.classList.add("open");
   }
 
+  function nextDefaultLessonName(day){
+    var n = lessonsForDay(day).length + 1;
+    return "Lesson " + n;
+  }
+
   function closeSheet(){
     backdropEl.classList.remove("open");
     sheetEl.classList.remove("open");
@@ -884,6 +1022,38 @@
 
   document.getElementById("backdrop").onclick = closeSheet;
   document.getElementById("sheetClose").onclick = closeSheet;
+
+  document.getElementById("btnRenameLesson").onclick = function(){
+    var newName = prompt("Rename this lesson:", currentLessonName);
+    if(newName === null) return;
+    newName = newName.trim();
+    if(!newName) return;
+    currentLessonName = newName;
+    document.getElementById("sheetTitle").textContent = currentLessonName;
+  };
+
+  document.getElementById("btnAddLesson").onclick = function(){
+    var defaultName = nextDefaultLessonName(currentDay);
+    var name = prompt("Name this lesson:", defaultName);
+    if(name === null) return; // cancelled
+    name = name.trim();
+    if(!name) name = defaultName;
+    // Not saved to storage until it actually has content (Save button) -
+    // opening straight into the editor with this chosen name pre-set.
+    currentDay = currentDay; // (unchanged, for clarity)
+    currentLessonId = null;
+    currentLessonName = name;
+    currentItems = [{ text: "", songId: null }];
+    openPickerIndex = null;
+    document.getElementById("sheetTitle").textContent = currentLessonName;
+    document.getElementById("sheetSub").textContent = DAYS[currentDay];
+    document.getElementById("reuseList").style.display = "none";
+    document.getElementById("templateList").style.display = "none";
+    stopAudio();
+    renderItemsList();
+    backdropEl.classList.add("open");
+    sheetEl.classList.add("open");
+  };
 
   function renderItemsList(){
     var wrap = document.getElementById("itemsList");
@@ -1050,23 +1220,20 @@
     audioEl.removeAttribute("src");
   }
 
-  // --- reuse previous lesson (copies the whole item list) ---
+  // --- reuse a lesson from another day, by name (copies the item list) ---
   document.getElementById("btnReuseToggle").onclick = function(){
     var list = document.getElementById("reuseList");
     if(list.style.display === "block"){ list.style.display = "none"; return; }
 
-    var entries = Object.keys(lessonsById).map(function(k){ return lessonsById[k]; })
-      .filter(function(l){ return l.id !== slotId(currentDay, currentHour) && getItems(l).some(function(it){ return it.text || it.songId; }); })
-      .sort(function(a,b){ return (b.updated||0) - (a.updated||0); });
+    var entries = dayLessons
+      .filter(function(l){ return l.id !== currentLessonId && getItems(l).some(function(it){ return it.text || it.songId; }); })
+      .sort(function(a,b){ return a.name.localeCompare(b.name); });
 
     if(entries.length === 0){
       list.innerHTML = '<div class="empty-note">No other lessons have content yet.</div>';
     } else {
       list.innerHTML = "";
       entries.forEach(function(l){
-        var parts = l.id.split("-");
-        var d = parseInt(parts[0],10), h = parseInt(parts[1],10);
-        var t = fmtHour(h);
         var lItems = getItems(l).filter(function(it){ return it.text || it.songId; });
         var previewText = lItems.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
         var songCount = lItems.filter(function(it){ return it.songId; }).length;
@@ -1075,7 +1242,7 @@
         item.className = "reuse-item";
         item.innerHTML =
           '<div class="reuse-main">' +
-            '<div class="when">' + DAYS[d] + ", " + t.label + " " + t.ampm + '</div>' +
+            '<div class="when">' + escapeHtml(l.name) + ' <span style="font-weight:400; color:var(--ink-soft);">&middot; ' + DAYS[l.day] + '</span></div>' +
             '<div class="preview">' + (previewText ? previewText : "(no notes)") +
               (songCount > 0 ? " &middot; &#9835; " + songCount + " song" + (songCount===1?"":"s") : "") + '</div>' +
           '</div>';
@@ -1084,7 +1251,7 @@
           if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
           renderItemsList();
           list.style.display = "none";
-          showToast("Copied from " + DAYS[d] + " " + t.label + t.ampm);
+          showToast('Copied from "' + l.name + '" (' + DAYS[l.day] + ')');
         };
         list.appendChild(item);
       });
@@ -1165,24 +1332,40 @@
     list.style.display = "block";
   };
 
-  // --- save / clear ---
+  // --- save / delete ---
   document.getElementById("btnSave").onclick = function(){
-    var id = slotId(currentDay, currentHour);
     var cleanItems = currentItems.filter(function(it){ return it.text.trim() || it.songId; })
       .map(function(it){ return { text: it.text.trim(), songId: it.songId }; });
 
     if(cleanItems.length === 0){
-      deleteLesson(id, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); }); });
+      if(currentLessonId !== null){
+        deleteDayLesson(currentLessonId, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); }); });
+      } else {
+        closeSheet(); // nothing was ever saved for this new, empty lesson
+      }
       return;
     }
-    saveLesson({ id: id, items: cleanItems, updated: Date.now() }, function(){
+
+    var record = {
+      day: currentDay,
+      name: currentLessonName,
+      items: cleanItems,
+      updated: Date.now(),
+      order: currentLessonId !== null
+        ? (dayLessons.filter(function(l){ return l.id === currentLessonId; })[0] || {}).order || 0
+        : lessonsForDay(currentDay).length
+    };
+    if(currentLessonId !== null) record.id = currentLessonId;
+
+    saveDayLesson(record, function(){
       refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("Saved"); });
     });
   };
 
   document.getElementById("btnClear").onclick = function(){
-    var id = slotId(currentDay, currentHour);
-    deleteLesson(id, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); }); });
+    if(currentLessonId === null){ closeSheet(); return; }
+    if(!confirm('Delete "' + currentLessonName + '"? This can\'t be undone.')) return;
+    deleteDayLesson(currentLessonId, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("Lesson deleted"); }); });
   };
 
   // ---------------------------------------------------------------
@@ -1207,14 +1390,15 @@
   var libraryAudioEl = document.getElementById("libraryAudioPlayer");
 
   function usageCount(songId){
-    return Object.keys(lessonsById).filter(function(k){
-      return getItems(lessonsById[k]).some(function(it){ return it.songId === songId; });
+    return dayLessons.filter(function(l){
+      return getItems(l).some(function(it){ return it.songId === songId; });
     }).length;
   }
 
   function openLibrarySheet(){
     libraryAudioEl.pause();
     libraryAudioEl.style.display = "none";
+    document.getElementById("libraryFindInput").value = "";
     renderLibraryList();
     libraryBackdropEl.classList.add("open");
     librarySheetEl.classList.add("open");
@@ -1236,8 +1420,14 @@
       list.innerHTML = '<div class="empty-note">No songs yet. Tap "Add new MP3" above to save one &mdash; you can attach it to any hour later.</div>';
       return;
     }
+    var query = (document.getElementById("libraryFindInput").value || "").trim().toLowerCase();
+    var filtered = songs.filter(function(s){ return s.name.toLowerCase().indexOf(query) !== -1; });
     list.innerHTML = "";
-    songs.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(s){
+    if(filtered.length === 0){
+      list.innerHTML = '<div class="empty-note">No songs match &ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
+      return;
+    }
+    filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(s){
       var count = usageCount(s.id);
       var row = document.createElement("div");
       row.className = "library-song-item";
@@ -1246,7 +1436,7 @@
           '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
         '</button>' +
         '<div class="name">' + escapeHtml(s.name) +
-          '<span class="used-count">' + (count === 0 ? "Not used in any hour yet" : "Used in " + count + " hour" + (count===1?"":"s")) + '</span>' +
+          '<span class="used-count">' + (count === 0 ? "Not used in any lesson yet" : "Used in " + count + " lesson" + (count===1?"":"s")) + '</span>' +
         '</div>' +
         '<button class="icon-btn" aria-label="Rename">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' +
@@ -1278,7 +1468,7 @@
       };
       row.querySelector(".icon-btn.ghost").onclick = function(){
         var msg = count > 0
-          ? 'Delete "' + s.name + '"? It\'s used in ' + count + ' hour' + (count===1?"":"s") + " - those lessons will keep their notes but lose the song."
+          ? 'Delete "' + s.name + '"? It\'s used in ' + count + ' lesson' + (count===1?"":"s") + " - those lessons will keep their notes but lose the song."
           : 'Delete "' + s.name + '"?';
         if(!confirm(msg)) return;
         deleteSong(s.id, function(){
@@ -1305,6 +1495,7 @@
   function openTemplatesSheet(){
     templatesAudioEl.pause();
     templatesAudioEl.style.display = "none";
+    document.getElementById("templatesFindInput").value = "";
     renderTemplatesLibraryList();
     templatesBackdropEl.classList.add("open");
     templatesSheetEl.classList.add("open");
@@ -1317,6 +1508,7 @@
   }
 
   document.getElementById("btnOpenTemplates").onclick = openTemplatesSheet;
+  document.getElementById("templatesFindInput").oninput = renderTemplatesLibraryList;
   document.getElementById("templatesClose").onclick = closeTemplatesSheet;
   templatesBackdropEl.onclick = closeTemplatesSheet;
 
@@ -1326,8 +1518,18 @@
       list.innerHTML = '<div class="empty-note">No saved lessons yet. Open any hour, write it up, and use &ldquo;Save to your library&hellip;&rdquo; to add one.</div>';
       return;
     }
+    var query = (document.getElementById("templatesFindInput").value || "").trim().toLowerCase();
+    var filtered = templates.filter(function(tpl){
+      if(!query) return true;
+      if(tpl.name.toLowerCase().indexOf(query) !== -1) return true;
+      return tpl.items.some(function(it){ return it.text && it.text.toLowerCase().indexOf(query) !== -1; });
+    });
     list.innerHTML = "";
-    templates.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
+    if(filtered.length === 0){
+      list.innerHTML = '<div class="empty-note">No saved lessons match &ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
+      return;
+    }
+    filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
       var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
       var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
 
@@ -1411,6 +1613,8 @@
     });
   }
 
+  document.getElementById("libraryFindInput").oninput = renderLibraryList;
+
   document.getElementById("btnLibraryAddSong").onclick = function(){
     document.getElementById("libraryFileInput").click();
   };
@@ -1433,43 +1637,8 @@
   };
 
   // ---------------------------------------------------------------
-  // Settings sheet - configure which hours are shown per day
-  // ---------------------------------------------------------------
-  var settingsBackdropEl = document.getElementById("settingsBackdrop");
-  var settingsSheetEl = document.getElementById("settingsSheet");
-
-  function populateHourSelect(sel, selectedValue){
-    sel.innerHTML = "";
-    for(var h=0; h<24; h++){
-      var t = fmtHour(h);
-      var opt = document.createElement("option");
-      opt.value = h;
-      opt.textContent = t.label + " " + t.ampm;
-      if(h === selectedValue) opt.selected = true;
-      sel.appendChild(opt);
-    }
-  }
-
-  function openSettingsSheet(){
-    populateHourSelect(document.getElementById("startHourSelect"), workHours.start);
-    populateHourSelect(document.getElementById("endHourSelect"), workHours.end);
-    settingsBackdropEl.classList.add("open");
-    settingsSheetEl.classList.add("open");
-  }
-
-  function closeSettingsSheet(){
-    settingsBackdropEl.classList.remove("open");
-    settingsSheetEl.classList.remove("open");
-  }
-
-  document.getElementById("btnOpenSettings").onclick = openSettingsSheet;
-  document.getElementById("settingsClose").onclick = closeSettingsSheet;
-  settingsBackdropEl.onclick = closeSettingsSheet;
-
-  // ---------------------------------------------------------------
   // Transfer sheet - export/import a full copy of the plan to move
-  // it between devices. Kept separate from Hours since it isn't a
-  // setting, it's a one-off action.
+  // it between devices.
   // ---------------------------------------------------------------
   var transferBackdropEl = document.getElementById("transferBackdrop");
   var transferSheetEl = document.getElementById("transferSheet");
@@ -1488,30 +1657,6 @@
   document.getElementById("transferClose").onclick = closeTransferSheet;
   transferBackdropEl.onclick = closeTransferSheet;
 
-  document.getElementById("btnSaveHours").onclick = function(){
-    var start = parseInt(document.getElementById("startHourSelect").value, 10);
-    var end = parseInt(document.getElementById("endHourSelect").value, 10);
-    if(start > end){
-      showToast("Start hour must be before end hour");
-      return;
-    }
-    workHours = { start: start, end: end };
-    saveSettings({ startHour: start, endHour: end, locked: locked }, function(){
-      renderSlotList();
-      closeSettingsSheet();
-      showToast("Work hours updated");
-    });
-  };
-
-  document.getElementById("btnResetHours").onclick = function(){
-    workHours = { start: 0, end: 23 };
-    saveSettings({ startHour: 0, endHour: 23, locked: locked }, function(){
-      renderSlotList();
-      closeSettingsSheet();
-      showToast("Showing the full day again");
-    });
-  };
-
   // ---------------------------------------------------------------
   // Ready / Edit lock mode - freezes the plan into a view-only state
   // so nothing can be added or changed by accident once it's final.
@@ -1525,9 +1670,11 @@
   function setLocked(val){
     locked = val;
     applyLockedUi();
-    saveSettings({ startHour: workHours.start, endHour: workHours.end, locked: locked }, function(){
-      renderSlotList();
-      showToast(locked ? "Marked ready - view only" : "Editing unlocked");
+    getSettings(function(s){
+      saveSettings(mergeSettings(s, { locked: locked }), function(){
+        renderSlotList();
+        showToast(locked ? "Marked ready - view only" : "Editing unlocked");
+      });
     });
   }
 
@@ -1563,7 +1710,7 @@
     exportBtn.disabled = true;
     exportBtn.textContent = "Preparing\u2026";
 
-    getAllLessons(function(lessonsMap){
+    getAllDayLessons(function(allDayLessons){
       getAllSongs(function(allSongs){
         getAllTemplates(function(allTemplates){
         Promise.all(allSongs.map(function(s){
@@ -1573,10 +1720,10 @@
         })).then(function(songsOut){
           var payload = {
             app: "lesson-planner",
-            version: 1,
+            version: 2,
             exportedAt: Date.now(),
-            settings: { startHour: workHours.start, endHour: workHours.end, locked: locked },
-            lessons: Object.keys(lessonsMap).map(function(k){ return lessonsMap[k]; }),
+            settings: { locked: locked },
+            dayLessons: allDayLessons,
             songs: songsOut,
             templates: allTemplates
           };
@@ -1679,17 +1826,36 @@
       try{ payload = JSON.parse(reader.result); }
       catch(err){ showToast("That file isn't a valid export"); return; }
 
-      if(!payload || payload.app !== "lesson-planner" || !Array.isArray(payload.lessons) || !Array.isArray(payload.songs)){
+      var hasNewLessons = Array.isArray(payload && payload.dayLessons);
+      var hasOldLessons = Array.isArray(payload && payload.lessons);
+      if(!payload || payload.app !== "lesson-planner" || !(hasNewLessons || hasOldLessons) || !Array.isArray(payload.songs)){
         showToast("That file isn't a valid export");
         return;
       }
       var payloadTemplates = Array.isArray(payload.templates) ? payload.templates : []; // older exports won't have this
+
+      // Convert an older (hour-based) export into named day-lessons, the
+      // same transform used for migrating an existing device.
+      var dayLessonsToImport = hasNewLessons ? payload.dayLessons : payload.lessons.map(function(l){
+        var parts = l.id.split("-");
+        var day = parseInt(parts[0], 10);
+        var hour = parseInt(parts[1], 10);
+        var t = fmtHour(hour);
+        return {
+          day: day,
+          name: t.label + " " + t.ampm,
+          items: getItems(l),
+          order: hour,
+          updated: l.updated || Date.now()
+        };
+      });
 
       showToast("Importing\u2026");
 
       clearStore("lessons", function(){
         clearStore("songs", function(){
           clearStore("templates", function(){
+          clearDayLessonsStore(function(){
           Promise.all(payload.songs.map(function(s){
             return dataUrlToBlob(s.dataUrl).then(function(blob){
               if(!blob.type || blob.type.indexOf("audio/") !== 0){
@@ -1702,8 +1868,12 @@
             });
           })).then(function(){
             return new Promise(function(resolve, reject){
-              var store = tx("lessons","readwrite");
-              payload.lessons.forEach(function(l){ store.put(l); });
+              var store = tx("dayLessons","readwrite");
+              dayLessonsToImport.forEach(function(l){
+                var rec = { day: l.day, name: l.name, items: l.items, order: l.order || 0, updated: l.updated || Date.now() };
+                if(hasNewLessons && typeof l.id === "number") rec.id = l.id;
+                store.put(rec);
+              });
               store.transaction.oncomplete = resolve;
               store.transaction.onerror = function(){ reject(store.transaction.error); };
             });
@@ -1717,11 +1887,9 @@
             });
           }).then(function(){
             var st = payload.settings || {};
-            workHours = { start: (typeof st.startHour === "number" ? st.startHour : 0),
-                          end: (typeof st.endHour === "number" ? st.endHour : 23) };
             locked = !!st.locked;
             applyLockedUi();
-            saveSettings({ startHour: workHours.start, endHour: workHours.end, locked: locked }, function(){
+            saveSettings({ locked: locked, migratedToNamedLessons: true }, function(){
               refreshAll(function(){
                 renderDayNav();
                 renderSlotList();
@@ -1732,6 +1900,7 @@
           }).catch(function(err){
             console.error("Import failed", err);
             showToast("Import failed - see console");
+          });
           });
           });
         });
@@ -1764,13 +1933,15 @@
   // Init
   // ---------------------------------------------------------------
   openDb(function(){
-    getSettings(function(s){
-      if(s){ workHours = { start: s.startHour, end: s.endHour }; locked = !!s.locked; }
-      applyLockedUi();
-      refreshAll(function(){
-        renderDayNav();
-        renderSlotList();
-        updateOnlineBadge();
+    migrateHourLessonsIfNeeded(function(){
+      getSettings(function(s){
+        locked = !!(s && s.locked);
+        applyLockedUi();
+        refreshAll(function(){
+          renderDayNav();
+          renderSlotList();
+          updateOnlineBadge();
+        });
       });
     });
   });
