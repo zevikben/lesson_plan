@@ -213,10 +213,12 @@
   textarea.item-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
 
   .item-remove{
-    background:transparent; border:none; color:#c9a8a2; width:30px; height:30px;
-    flex:0 0 auto; cursor:pointer; padding-top:6px;
+    background:transparent; border:1px solid var(--line); border-radius:8px;
+    color:var(--danger); width:32px; height:32px;
+    flex:0 0 auto; cursor:pointer; margin-top:1px;
+    display:flex; align-items:center; justify-content:center;
   }
-  .item-remove svg{ width:15px; height:15px; }
+  .item-remove svg{ width:16px; height:16px; }
 
   .item-song-area{ margin-top:2px; padding-inline-start:28px; }
   .item-song-chip{
