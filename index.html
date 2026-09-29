@@ -1004,6 +1004,11 @@
     document.getElementById("lessonBody").style.display = "";
     document.getElementById("sheetFooter").style.display = "";
     document.getElementById("btnNameContinue").style.display = "none";
+    // Freshly showing the editor - make sure Save/Delete aren't left
+    // disabled from a previous save that was still in flight when the
+    // sheet was last closed.
+    document.getElementById("btnSave").disabled = false;
+    document.getElementById("btnClear").disabled = false;
   }
 
   // lessonId is null for a new, not-yet-saved lesson (the day's default
@@ -1366,6 +1371,17 @@
 
   // --- save / delete ---
   document.getElementById("btnSave").onclick = function(){
+    var saveBtn = document.getElementById("btnSave");
+    // Guards against a fast double-tap (or a stray double-fired click
+    // event, which happens on some touchscreens) triggering this handler
+    // twice before the first save's async DB write and refresh finish -
+    // without this, the duplicate-name check below can run its "is this
+    // name already used?" lookup twice against the same not-yet-updated
+    // in-memory list, letting two lessons with the same name both get
+    // created instead of being caught.
+    if(saveBtn.disabled) return;
+    saveBtn.disabled = true;
+
     var cleanItems = currentItems.filter(function(it){ return it.text.trim() || it.songId; })
       .map(function(it){ return { text: it.text.trim(), songId: it.songId }; });
 
@@ -1399,7 +1415,7 @@
              'להחליף אותו בגרסה שכתבת עכשיו (הוא יעבור ליום ' + DAYS[currentDay] + ')? ' +
              'לביטול, יש לתת לשיעור הזה שם אחר.')
       );
-      if(!ok) return; // stays open - name field is right there to change
+      if(!ok){ saveBtn.disabled = false; return; } // stays open - name field is right there to change
     }
 
     var existingForOrder = currentLessonId !== null
