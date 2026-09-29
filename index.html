@@ -1077,6 +1077,23 @@
   document.getElementById("btnNameContinue").onclick = function(){
     var nameInput = document.getElementById("lessonNameInput");
     var name = nameInput.value.trim() || nextDefaultLessonName(currentDay);
+
+    // A lesson's name is its key across the whole week (see the Save
+    // handler below) - check for that right here, before any content is
+    // even written, so a clash is caught immediately instead of only
+    // after the lesson has been filled in.
+    var duplicate = dayLessons.filter(function(l){ return l.name.trim() === name; })[0];
+    if(duplicate){
+      showToast(
+        duplicate.day === currentDay
+          ? ('השם "' + name + '" כבר בשימוש ביום זה - יש לבחור שם אחר')
+          : ('השם "' + name + '" כבר בשימוש ביום ' + DAYS[duplicate.day] + ' - יש לבחור שם אחר')
+      );
+      nameInput.focus();
+      nameInput.select();
+      return; // stays on the naming step
+    }
+
     currentLessonName = name;
     nameInput.value = name;
     document.getElementById("sheetTitle").textContent = name;
@@ -1135,8 +1152,8 @@
         '<div class="item-top">' +
           '<div class="item-number">' + (idx+1) + '.</div>' +
           '<textarea class="item-text" data-idx="' + idx + '" placeholder="מה מלמדים בשיעור הזה?"' + (locked ? ' readonly' : '') + '>' + escapeHtml(item.text) + '</textarea>' +
-          (currentItems.length > 1 && !locked
-            ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="הסרת פריט">' +
+          (!locked
+            ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="מחיקת פריט">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>' +
               '</button>'
             : '') +
@@ -1170,7 +1187,15 @@
 
   function handleItemAction(action, idx){
     if(action === "remove-item"){
-      currentItems.splice(idx, 1);
+      // Removing the only remaining item would leave nothing to type into,
+      // so instead of deleting the row itself, just erase its text and
+      // song - same visible result (the item is emptied out) without
+      // having to select and delete the text by hand.
+      if(currentItems.length > 1){
+        currentItems.splice(idx, 1);
+      } else {
+        currentItems[idx] = { text: "", songId: null };
+      }
       renderItemsList();
 
     } else if(action === "remove-song"){
