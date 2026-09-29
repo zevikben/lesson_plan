@@ -63,13 +63,14 @@ that, you can turn on Airplane Mode and it keeps working completely.
   the header), upserted by name - there's no separate "save to library"
   step. If you don't want a particular one kept there, just delete it from
   that list; it won't affect the copy on its day.
-- **Browse your saved lessons…**: from inside any lesson you're editing, use
-  this (with its own find box) to search that same library by name and copy
-  a match's content into the lesson you're currently writing - this is how
-  the same lesson (e.g. "Times Tables") moves from one day to another.
+- **Your saved lessons** (inside any lesson you're editing): a search box
+  and the matching list are right there, always visible - type a name to
+  filter, then tap a result to copy its content into the lesson you're
+  currently writing. This is how the same lesson (e.g. "Times Tables")
+  moves from one day to another.
 - Both the **Songs** and **Lessons** library sheets - and this in-editor
-  browse list - have a search box at the top to jump straight to one by
-  name when the list gets long.
+  list - have a search box at the top to jump straight to one by name when
+  the list gets long.
 - Everything is saved automatically on your phone and stays there even
   after closing the app, restarting your phone, or going offline.
 

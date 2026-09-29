@@ -463,9 +463,8 @@
       <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
       <label class="field-label edit-only">השיעורים השמורים שלך</label>
-      <button class="btn secondary edit-only" id="btnTemplateToggle">עיון בשיעורים השמורים&hellip;</button>
-      <input type="search" class="find-input edit-only" id="lessonTemplateFind" placeholder="חיפוש שיעור שמור&hellip;" style="display:none; margin-top:8px;">
-      <div class="reuse-list" id="templateList" style="display:none;"></div>
+      <input type="search" class="find-input edit-only" id="lessonTemplateFind" placeholder="חפש שיעור שמור&hellip;">
+      <div class="reuse-list" id="templateList"></div>
     </div>
 
   </div>
@@ -1027,8 +1026,8 @@
     nameInput.value = currentLessonName;
     nameInput.readOnly = locked;
 
-    document.getElementById("templateList").style.display = "none";
-    document.getElementById("lessonTemplateFind").style.display = "none";
+    document.getElementById("lessonTemplateFind").value = "";
+    renderTemplateList();
     stopAudio();
     renderItemsList();
 
@@ -1327,7 +1326,6 @@
         currentItems = tpl.items.map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
         if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
         renderItemsList();
-        list.style.display = "none";
         showToast('נטען "' + tpl.name + '"');
       };
       item.querySelector(".reuse-delete").onclick = function(e){
@@ -1344,19 +1342,6 @@
     });
   }
 
-  document.getElementById("btnTemplateToggle").onclick = function(){
-    var list = document.getElementById("templateList");
-    var findInput = document.getElementById("lessonTemplateFind");
-    if(list.style.display === "block"){
-      list.style.display = "none";
-      findInput.style.display = "none";
-      return;
-    }
-    findInput.value = "";
-    findInput.style.display = "block";
-    renderTemplateList();
-    list.style.display = "block";
-  };
   document.getElementById("lessonTemplateFind").oninput = renderTemplateList;
 
   // --- save / delete ---
