@@ -452,25 +452,28 @@
 
     <label class="field-label" for="lessonNameInput">שם השיעור</label>
     <input type="text" class="find-input" id="lessonNameInput" placeholder="לדוגמה: חשבון, קריאה, זמן שירה">
+    <button class="btn primary edit-only" id="btnNameContinue" style="margin-top:10px; display:none;">המשך</button>
 
-    <label class="field-label">פריטים</label>
-    <div id="itemsList"></div>
-    <button class="btn-add-item edit-only" id="btnAddItem">+ הוספת פריט</button>
-    <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
+    <div id="lessonBody">
+      <label class="field-label">פריטים</label>
+      <div id="itemsList"></div>
+      <button class="btn-add-item edit-only" id="btnAddItem">+ הוספת פריט</button>
+      <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
-    <label class="field-label edit-only">שימוש חוזר בשיעור מיום אחר</label>
-    <button class="btn secondary edit-only" id="btnReuseToggle">עיון בשיעורים לפי שם&hellip;</button>
-    <div class="reuse-list" id="reuseList" style="display:none;"></div>
+      <label class="field-label edit-only">שימוש חוזר בשיעור מיום אחר</label>
+      <button class="btn secondary edit-only" id="btnReuseToggle">עיון בשיעורים לפי שם&hellip;</button>
+      <div class="reuse-list" id="reuseList" style="display:none;"></div>
 
-    <label class="field-label edit-only">שמירת השיעור תחת שם</label>
-    <button class="btn secondary edit-only" id="btnSaveTemplate">שמירה לספרייה&hellip;</button>
+      <label class="field-label edit-only">שמירת השיעור תחת שם</label>
+      <button class="btn secondary edit-only" id="btnSaveTemplate">שמירה לספרייה&hellip;</button>
 
-    <label class="field-label edit-only">השיעורים השמורים שלך</label>
-    <button class="btn secondary edit-only" id="btnTemplateToggle">עיון בשיעורים השמורים&hellip;</button>
-    <div class="reuse-list" id="templateList" style="display:none;"></div>
+      <label class="field-label edit-only">השיעורים השמורים שלך</label>
+      <button class="btn secondary edit-only" id="btnTemplateToggle">עיון בשיעורים השמורים&hellip;</button>
+      <div class="reuse-list" id="templateList" style="display:none;"></div>
+    </div>
 
   </div>
-  <div class="sheet-footer edit-only">
+  <div class="sheet-footer edit-only" id="sheetFooter">
     <button class="btn secondary" id="btnClear">מחיקת שיעור</button>
     <button class="btn primary" id="btnSave">שמירה</button>
   </div>
@@ -983,9 +986,30 @@
   var backdropEl = document.getElementById("backdrop");
   var currentItems = [];       // working copy of this lesson's items while the sheet is open
   var openPickerIndex = null;  // which item's "choose from library" list is currently expanded
+  var namingStep = false;      // true while a brand-new lesson's name question is showing, before its content is revealed
+
+  // For a brand-new lesson, the name is asked as its own first question -
+  // it's the key used to find and reuse the lesson later, so it needs to
+  // be given real thought before any content is typed. The rest of the
+  // editor (items, reuse, etc.) stays hidden until the name is confirmed.
+  function showNamingStep(){
+    namingStep = true;
+    document.getElementById("lessonBody").style.display = "none";
+    document.getElementById("sheetFooter").style.display = "none";
+    document.getElementById("btnNameContinue").style.display = "block";
+  }
+
+  function showLessonBody(){
+    namingStep = false;
+    document.getElementById("lessonBody").style.display = "";
+    document.getElementById("sheetFooter").style.display = "";
+    document.getElementById("btnNameContinue").style.display = "none";
+  }
 
   // lessonId is null for a new, not-yet-saved lesson (the day's default
-  // starter slot, or one just created with "+ Add lesson").
+  // starter slot, or one just created with "+ Add lesson"). For either of
+  // those, the name question is shown first (see showNamingStep above);
+  // opening an existing, already-named lesson goes straight to its content.
   function openLessonSheet(day, lessonId){
     currentDay = day;
     currentLessonId = lessonId;
@@ -1009,6 +1033,14 @@
 
     backdropEl.classList.add("open");
     sheetEl.classList.add("open");
+
+    if(lesson === null && !locked){
+      showNamingStep();
+      nameInput.focus();
+      nameInput.select();
+    } else {
+      showLessonBody();
+    }
   }
 
   function nextDefaultLessonName(day){
@@ -1025,37 +1057,34 @@
   document.getElementById("backdrop").onclick = closeSheet;
   document.getElementById("sheetClose").onclick = closeSheet;
 
-  // Naming a lesson happens through the always-visible name field at the
-  // top of the sheet (see below), not a popup - this keeps naming visible
-  // as part of filling the lesson in, both for a brand-new lesson and for
-  // renaming an existing one.
+  // Naming happens through this always-visible field, not a popup - for a
+  // brand-new lesson it's gated behind "Continue" as its own first question
+  // (see showNamingStep); for an existing lesson it can just be edited here
+  // any time, live-updating the header above.
   document.getElementById("lessonNameInput").oninput = function(){
     currentLessonName = this.value;
     document.getElementById("sheetTitle").textContent = this.value.trim() || nextDefaultLessonName(currentDay);
   };
+  document.getElementById("lessonNameInput").onkeydown = function(e){
+    if(namingStep && e.key === "Enter"){
+      e.preventDefault();
+      document.getElementById("btnNameContinue").click();
+    }
+  };
+
+  document.getElementById("btnNameContinue").onclick = function(){
+    var nameInput = document.getElementById("lessonNameInput");
+    var name = nameInput.value.trim() || nextDefaultLessonName(currentDay);
+    currentLessonName = name;
+    nameInput.value = name;
+    document.getElementById("sheetTitle").textContent = name;
+    showLessonBody();
+    var firstTextarea = document.querySelector("#itemsList .item-text");
+    if(firstTextarea) firstTextarea.focus();
+  };
 
   document.getElementById("btnAddLesson").onclick = function(){
-    var defaultName = nextDefaultLessonName(currentDay);
-    // Not saved to storage until it actually has content (Save button) -
-    // opens straight into the editor with a suggested name already filled
-    // into the name field, ready to be changed before writing the lesson.
-    currentLessonId = null;
-    currentLessonName = defaultName;
-    currentItems = [{ text: "", songId: null }];
-    openPickerIndex = null;
-    document.getElementById("sheetTitle").textContent = currentLessonName;
-    document.getElementById("sheetSub").textContent = DAYS[currentDay];
-    var nameInput = document.getElementById("lessonNameInput");
-    nameInput.value = currentLessonName;
-    nameInput.readOnly = false;
-    document.getElementById("reuseList").style.display = "none";
-    document.getElementById("templateList").style.display = "none";
-    stopAudio();
-    renderItemsList();
-    backdropEl.classList.add("open");
-    sheetEl.classList.add("open");
-    nameInput.focus();
-    nameInput.select();
+    openLessonSheet(currentDay, null);
   };
 
   function renderItemsList(){
@@ -1351,19 +1380,58 @@
 
     var finalName = (currentLessonName || "").trim() || nextDefaultLessonName(currentDay);
 
+    // A lesson's name is its key across the whole week, not just its own
+    // day - it's what "reuse a lesson from another day" searches by, so
+    // only one lesson may hold any given name at a time. If another lesson
+    // anywhere already has this exact name, either replace it with what's
+    // being saved now (moving it to this day, after confirming) or stop so
+    // the name field can be changed instead.
+    var duplicate = dayLessons.filter(function(l){
+      return l.id !== currentLessonId && l.name.trim() === finalName;
+    })[0];
+
+    if(duplicate){
+      var ok = confirm(
+        duplicate.day === currentDay
+          ? ('כבר קיים שיעור בשם "' + finalName + '" ביום זה.\n\n' +
+             'להחליף אותו בגרסה שכתבת עכשיו? לביטול, יש לתת לשיעור הזה שם אחר.')
+          : ('כבר קיים שיעור בשם "' + finalName + '" ביום ' + DAYS[duplicate.day] + '.\n\n' +
+             'להחליף אותו בגרסה שכתבת עכשיו (הוא יעבור ליום ' + DAYS[currentDay] + ')? ' +
+             'לביטול, יש לתת לשיעור הזה שם אחר.')
+      );
+      if(!ok) return; // stays open - name field is right there to change
+    }
+
+    var existingForOrder = currentLessonId !== null
+      ? dayLessons.filter(function(l){ return l.id === currentLessonId; })[0]
+      : null;
+
     var record = {
       day: currentDay,
       name: finalName,
       items: cleanItems,
       updated: Date.now(),
-      order: currentLessonId !== null
-        ? (dayLessons.filter(function(l){ return l.id === currentLessonId; })[0] || {}).order || 0
-        : lessonsForDay(currentDay).length
+      order: duplicate
+        ? (duplicate.day === currentDay ? (duplicate.order || 0) : lessonsForDay(currentDay).length)
+        : (existingForOrder ? (existingForOrder.order || 0) : lessonsForDay(currentDay).length)
     };
-    if(currentLessonId !== null) record.id = currentLessonId;
+    // Replacing a duplicate takes over its id (put() then overwrites it in
+    // place); if the lesson being saved was itself a different existing
+    // record (renamed to match the duplicate), that old record is removed
+    // afterward so it doesn't linger as a stray leftover under its old name.
+    var staleId = null;
+    if(duplicate){
+      record.id = duplicate.id;
+      if(currentLessonId !== null && currentLessonId !== duplicate.id) staleId = currentLessonId;
+    } else if(currentLessonId !== null){
+      record.id = currentLessonId;
+    }
 
     saveDayLesson(record, function(){
-      refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("נשמר"); });
+      function done(){
+        refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("נשמר"); });
+      }
+      if(staleId !== null) deleteDayLesson(staleId, done); else done();
     });
   };
 
