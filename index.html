@@ -462,12 +462,9 @@
       <button class="btn-add-item edit-only" id="btnAddItem">+ הוספת פריט</button>
       <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
-      <label class="field-label edit-only">שימוש חוזר בשיעור מיום אחר</label>
-      <button class="btn secondary edit-only" id="btnReuseToggle">עיון בשיעורים לפי שם&hellip;</button>
-      <div class="reuse-list" id="reuseList" style="display:none;"></div>
-
       <label class="field-label edit-only">השיעורים השמורים שלך</label>
       <button class="btn secondary edit-only" id="btnTemplateToggle">עיון בשיעורים השמורים&hellip;</button>
+      <input type="search" class="find-input edit-only" id="lessonTemplateFind" placeholder="חיפוש שיעור שמור&hellip;" style="display:none; margin-top:8px;">
       <div class="reuse-list" id="templateList" style="display:none;"></div>
     </div>
 
@@ -1030,8 +1027,8 @@
     nameInput.value = currentLessonName;
     nameInput.readOnly = locked;
 
-    document.getElementById("reuseList").style.display = "none";
     document.getElementById("templateList").style.display = "none";
+    document.getElementById("lessonTemplateFind").style.display = "none";
     stopAudio();
     renderItemsList();
 
@@ -1281,45 +1278,6 @@
     audioEl.removeAttribute("src");
   }
 
-  // --- reuse a lesson from another day, by name (copies the item list) ---
-  document.getElementById("btnReuseToggle").onclick = function(){
-    var list = document.getElementById("reuseList");
-    if(list.style.display === "block"){ list.style.display = "none"; return; }
-
-    var entries = dayLessons
-      .filter(function(l){ return l.id !== currentLessonId && getItems(l).some(function(it){ return it.text || it.songId; }); })
-      .sort(function(a,b){ return a.name.localeCompare(b.name); });
-
-    if(entries.length === 0){
-      list.innerHTML = '<div class="empty-note">אין עדיין שיעורים אחרים עם תוכן.</div>';
-    } else {
-      list.innerHTML = "";
-      entries.forEach(function(l){
-        var lItems = getItems(l).filter(function(it){ return it.text || it.songId; });
-        var previewText = lItems.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
-        var songCount = lItems.filter(function(it){ return it.songId; }).length;
-
-        var item = document.createElement("div");
-        item.className = "reuse-item";
-        item.innerHTML =
-          '<div class="reuse-main">' +
-            '<div class="when">' + escapeHtml(l.name) + ' <span style="font-weight:400; color:var(--ink-soft);">&middot; ' + DAYS[l.day] + '</span></div>' +
-            '<div class="preview">' + (previewText ? previewText : "(אין הערות)") +
-              (songCount > 0 ? (songCount===1 ? " &middot; &#9835; שיר אחד" : " &middot; &#9835; " + songCount + " שירים") : "") + '</div>' +
-          '</div>';
-        item.onclick = function(){
-          currentItems = lItems.map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
-          if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
-          renderItemsList();
-          list.style.display = "none";
-          showToast('הועתק מ-"' + l.name + '" (' + DAYS[l.day] + ')');
-        };
-        list.appendChild(item);
-      });
-    }
-    list.style.display = "block";
-  };
-
   // Saving a lesson to the day (btnSave, below) automatically keeps it in
   // this named library too, upserted by name - there's no separate "save
   // to library" step to press. Anything you don't want kept there can just
@@ -1343,8 +1301,14 @@
       list.innerHTML = '<div class="empty-note">עדיין לא נשמר דבר בספרייה שלך.</div>';
       return;
     }
+    var query = (document.getElementById("lessonTemplateFind").value || "").trim().toLowerCase();
+    var filtered = templates.filter(function(t){ return t.name.toLowerCase().indexOf(query) !== -1; });
+    if(filtered.length === 0){
+      list.innerHTML = '<div class="empty-note">אין שיעורים שמורים התואמים ל&ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
+      return;
+    }
     list.innerHTML = "";
-    templates.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
+    filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
       var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
       var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
 
@@ -1382,10 +1346,18 @@
 
   document.getElementById("btnTemplateToggle").onclick = function(){
     var list = document.getElementById("templateList");
-    if(list.style.display === "block"){ list.style.display = "none"; return; }
+    var findInput = document.getElementById("lessonTemplateFind");
+    if(list.style.display === "block"){
+      list.style.display = "none";
+      findInput.style.display = "none";
+      return;
+    }
+    findInput.value = "";
+    findInput.style.display = "block";
     renderTemplateList();
     list.style.display = "block";
   };
+  document.getElementById("lessonTemplateFind").oninput = renderTemplateList;
 
   // --- save / delete ---
   document.getElementById("btnSave").onclick = function(){

@@ -58,17 +58,18 @@ that, you can turn on Airplane Mode and it keeps working completely.
   something you've already downloaded) — it's saved permanently inside
   the app from then on, so you never need to add that same song twice.
 - **Choose from library**: reuse a song you've already added to any other lesson.
-- **Reuse a lesson from another day**: browse every named lesson across
-  the whole week (sorted alphabetically) and copy one's content into the
-  lesson you're currently editing - this is how the same lesson (e.g.
-  "Times Tables") moves from one day to another.
 - **Saved lessons library**: every lesson you save to a day is automatically
   kept in a separate, long-term collection too (the **Lessons** button in
   the header), upserted by name - there's no separate "save to library"
   step. If you don't want a particular one kept there, just delete it from
   that list; it won't affect the copy on its day.
-- Both the **Songs** and **Lessons** library sheets have a search box at
-  the top to jump straight to one by name when the list gets long.
+- **Browse your saved lessons…**: from inside any lesson you're editing, use
+  this (with its own find box) to search that same library by name and copy
+  a match's content into the lesson you're currently writing - this is how
+  the same lesson (e.g. "Times Tables") moves from one day to another.
+- Both the **Songs** and **Lessons** library sheets - and this in-editor
+  browse list - have a search box at the top to jump straight to one by
+  name when the list gets long.
 - Everything is saved automatically on your phone and stays there even
   after closing the app, restarting your phone, or going offline.
 
