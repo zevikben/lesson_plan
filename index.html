@@ -464,9 +464,6 @@
       <button class="btn secondary edit-only" id="btnReuseToggle">עיון בשיעורים לפי שם&hellip;</button>
       <div class="reuse-list" id="reuseList" style="display:none;"></div>
 
-      <label class="field-label edit-only">שמירת השיעור תחת שם</label>
-      <button class="btn secondary edit-only" id="btnSaveTemplate">שמירה לספרייה&hellip;</button>
-
       <label class="field-label edit-only">השיעורים השמורים שלך</label>
       <button class="btn secondary edit-only" id="btnTemplateToggle">עיון בשיעורים השמורים&hellip;</button>
       <div class="reuse-list" id="templateList" style="display:none;"></div>
@@ -1296,27 +1293,21 @@
     list.style.display = "block";
   };
 
-  // --- save this lesson to the named library, independent of any hour ---
-  document.getElementById("btnSaveTemplate").onclick = function(){
-    var cleanItems = currentItems.filter(function(it){ return it.text.trim() || it.songId; })
-      .map(function(it){ return { text: it.text.trim(), songId: it.songId }; });
-
-    if(cleanItems.length === 0){
-      showToast("אין עדיין מה לשמור - יש לכתוב משהו קודם");
-      return;
+  // Saving a lesson to the day (btnSave, below) automatically keeps it in
+  // this named library too, upserted by name - there's no separate "save
+  // to library" step to press. Anything you don't want kept there can just
+  // be removed with the delete icon in the list below.
+  function syncTemplateForLesson(name, items, cb){
+    var existing = templates.filter(function(t){ return t.name.trim() === name; })[0];
+    if(existing){
+      var rec = { id: existing.id, name: name, items: items, added: existing.added || Date.now() };
+      var req = tx("templates","readwrite").put(rec);
+      req.onsuccess = function(){ cb && cb(); };
+      req.onerror = function(){ cb && cb(); };
+    } else {
+      addTemplate(name, items, function(){ cb && cb(); });
     }
-
-    var name = prompt("שמירת השיעור בשם:", currentLessonName || "");
-    if(name === null) return; // cancelled
-    name = name.trim();
-    if(!name){ showToast("יש לתת שם כדי לשמור"); return; }
-
-    addTemplate(name, cleanItems, function(){
-      refreshAll(function(){
-        showToast('נשמר בספרייה שלך בשם "' + name + '"');
-      });
-    });
-  };
+  }
 
   // --- browse / load / delete named lessons from the library ---
   function renderTemplateList(){
@@ -1444,10 +1435,13 @@
     }
 
     saveDayLesson(record, function(){
-      function done(){
+      function afterLibrarySync(){
         refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("נשמר"); });
       }
-      if(staleId !== null) deleteDayLesson(staleId, done); else done();
+      function afterStaleCleanup(){
+        syncTemplateForLesson(finalName, cleanItems, afterLibrarySync);
+      }
+      if(staleId !== null) deleteDayLesson(staleId, afterStaleCleanup); else afterStaleCleanup();
     });
   };
 
@@ -1604,7 +1598,7 @@
   function renderTemplatesLibraryList(){
     var list = document.getElementById("templatesLibraryList");
     if(templates.length === 0){
-      list.innerHTML = '<div class="empty-note">עדיין אין שיעורים שמורים. פתח/י שיעור כלשהו, כתוב/כתבי אותו, והשתמש/י ב&ldquo;שמירה לספרייה&hellip;&rdquo; כדי להוסיף אחד.</div>';
+      list.innerHTML = '<div class="empty-note">עדיין אין שיעורים שמורים. כל שיעור שנשמר ביום כלשהו נשמר גם כאן אוטומטית, לפי שמו.</div>';
       return;
     }
     var query = (document.getElementById("templatesFindInput").value || "").trim().toLowerCase();

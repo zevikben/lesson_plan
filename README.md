@@ -40,13 +40,18 @@ still have internet, so it can save its files for offline use — after
 that, you can turn on Airplane Mode and it keeps working completely.
 
 ## Using the app
-- Each day starts with one lesson slot. Tap it to name it, write notes,
-  and attach a song.
+- Each day starts with one empty lesson slot. Tap it to give it a name
+  first (its own question, before anything else) - that name is the
+  lesson's key, so it must be unique across the whole week, not just that
+  day.
 - **+ Add lesson**: adds another named lesson to the same day - a day can
   hold as many as you need (e.g. "Math", "Reading", "Music Time"), each
   kept completely separate.
-- Tap the pencil next to a lesson's name (while it's open) to rename it
-  any time.
+- The name field at the top of a lesson stays editable any time it's open,
+  so you can rename it later too.
+- If you save a lesson under a name that's already used elsewhere in the
+  week, you're asked whether to replace that other lesson with what you
+  just wrote (it moves to this day) - or cancel and pick a different name.
 - To remove a lesson, either open it and tap **Delete lesson**, or tap the
   small ✕ directly on its card in the day's list.
 - **Add new MP3**: pick an audio file from your phone (e.g. from Files, or
@@ -57,11 +62,11 @@ that, you can turn on Airplane Mode and it keeps working completely.
   the whole week (sorted alphabetically) and copy one's content into the
   lesson you're currently editing - this is how the same lesson (e.g.
   "Times Tables") moves from one day to another.
-- **Save to your library**: on top of the above, you can also give a
-  lesson a permanent spot in a separate, long-term collection (the
-  **Lessons** button in the header) that's never tied to a specific day
-  - handy for favorites you'll want to pull from indefinitely, not just
-  this week.
+- **Saved lessons library**: every lesson you save to a day is automatically
+  kept in a separate, long-term collection too (the **Lessons** button in
+  the header), upserted by name - there's no separate "save to library"
+  step. If you don't want a particular one kept there, just delete it from
+  that list; it won't affect the copy on its day.
 - Both the **Songs** and **Lessons** library sheets have a search box at
   the top to jump straight to one by name when the list gets long.
 - Everything is saved automatically on your phone and stays there even
