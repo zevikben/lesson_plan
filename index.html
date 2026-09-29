@@ -377,7 +377,10 @@
   /* Reading a lesson in Ready mode should feel like a full page, not a
      small sheet peeking up from the bottom - regardless of how short the
      lesson's own content is. */
-  body.locked #sheet{ min-height:90vh; }
+  body.locked #sheet{
+    min-height:100vh; max-height:100vh; height:100vh;
+    border-radius:0; padding-top: env(safe-area-inset-top);
+  }
   body.locked #sheet .sheet-scroll{ flex:1; }
 
   .transfer-row{ display:flex; gap:10px; margin-top:8px; }
