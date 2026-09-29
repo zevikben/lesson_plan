@@ -374,6 +374,12 @@
   }
   body.locked .item-number{ padding-top:9px; }
 
+  /* Reading a lesson in Ready mode should feel like a full page, not a
+     small sheet peeking up from the bottom - regardless of how short the
+     lesson's own content is. */
+  body.locked #sheet{ min-height:90vh; }
+  body.locked #sheet .sheet-scroll{ flex:1; }
+
   .transfer-row{ display:flex; gap:10px; margin-top:8px; }
   .transfer-note{ font-size:12px; color:var(--ink-soft); margin-top:8px; line-height:1.5; }
 
@@ -464,7 +470,7 @@
 
       <label class="field-label edit-only">השיעורים השמורים שלך</label>
       <input type="search" class="find-input edit-only" id="lessonTemplateFind" placeholder="חפש שיעור שמור&hellip;">
-      <div class="reuse-list" id="templateList"></div>
+      <div class="reuse-list edit-only" id="templateList"></div>
     </div>
 
   </div>
@@ -1296,12 +1302,21 @@
   // --- browse / load / delete named lessons from the library ---
   function renderTemplateList(){
     var list = document.getElementById("templateList");
-    if(templates.length === 0){
-      list.innerHTML = '<div class="empty-note">עדיין לא נשמר דבר בספרייה שלך.</div>';
+    // Opening a lesson is about that one lesson - don't dump the whole
+    // saved-lessons library onto the screen by default. The list only
+    // appears once something is actually typed into the search box, and
+    // the lesson currently open never lists itself as a match.
+    var query = (document.getElementById("lessonTemplateFind").value || "").trim().toLowerCase();
+    if(!query){
+      list.innerHTML = "";
       return;
     }
-    var query = (document.getElementById("lessonTemplateFind").value || "").trim().toLowerCase();
-    var filtered = templates.filter(function(t){ return t.name.toLowerCase().indexOf(query) !== -1; });
+    var candidates = templates.filter(function(t){ return t.name.trim() !== (currentLessonName || "").trim(); });
+    if(candidates.length === 0){
+      list.innerHTML = '<div class="empty-note">עדיין לא נשמר דבר אחר בספרייה שלך.</div>';
+      return;
+    }
+    var filtered = candidates.filter(function(t){ return t.name.toLowerCase().indexOf(query) !== -1; });
     if(filtered.length === 0){
       list.innerHTML = '<div class="empty-note">אין שיעורים שמורים התואמים ל&ldquo;' + escapeHtml(query) + '&rdquo;.</div>';
       return;
