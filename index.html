@@ -220,6 +220,20 @@
   }
   .item-remove svg{ width:16px; height:16px; }
 
+  .item-subs{ margin-top:6px; padding-inline-start:28px; display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+  .sub-row{ display:flex; gap:6px; align-items:flex-start; width:100%; }
+  .sub-bullet{ color:var(--gold); width:12px; flex:0 0 auto; padding-top:7px; text-align:center; }
+  textarea.sub-text{
+    flex:1; min-height:20px; resize:none; overflow:hidden;
+    border:1px solid var(--line); border-radius:8px; padding:6px 9px;
+    font-family:var(--sans); font-size:13.5px; color:var(--ink);
+    background:var(--paper-raised); line-height:1.4;
+  }
+  textarea.sub-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
+  .sub-remove{ background:transparent; border:1px solid var(--line); border-radius:8px; color:var(--danger); width:28px; height:28px; flex:0 0 auto; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .sub-remove svg{ width:14px; height:14px; }
+  .item-subs-view{ list-style:disc; margin:4px 0 0; padding-inline-start:46px; font-size:14px; line-height:1.5; color:var(--ink); }
+  .template-detail-subs{ margin:2px 0 0; padding-inline-start:22px; font-size:13px; }
   .item-song-area{ margin-top:2px; padding-inline-start:28px; }
   .item-song-chip{
     display:inline-flex; align-items:center; gap:8px;
@@ -753,7 +767,21 @@
   function getItems(lesson){
     if(!lesson) return [];
     if(lesson.items) return lesson.items;
-    return [{ text: lesson.text || "", songId: lesson.songId || null }];
+    return [{ text: lesson.text || "", songId: lesson.songId || null, subs: [] }];
+  }
+
+  // Each item can carry unnumbered sub-topics (item.subs, an array of
+  // strings). Older saved items simply don't have the field.
+  function itemSubs(it){
+    return (it && Array.isArray(it.subs))
+      ? it.subs.filter(function(s){ return typeof s === "string" && s.trim(); }).map(function(s){ return s.trim(); })
+      : [];
+  }
+  function itemHasContent(it){
+    return !!(it && ((it.text && it.text.trim()) || it.songId || itemSubs(it).length));
+  }
+  function cloneItem(it){
+    return { text: it.text || "", songId: it.songId || null, subs: Array.isArray(it.subs) ? it.subs.slice() : [] };
   }
 
   function lessonsForDay(day){
@@ -913,7 +941,7 @@
     }
 
     dayList.forEach(function(lesson){
-      var items = getItems(lesson).filter(function(it){ return it.text || it.songId; });
+      var items = getItems(lesson).filter(itemHasContent);
 
       var bodyHtml;
       if(items.length === 0){
@@ -1025,8 +1053,8 @@
 
     var lesson = lessonId === null ? null : dayLessons.filter(function(l){ return l.id === lessonId; })[0];
     currentLessonName = lesson ? lesson.name : nextDefaultLessonName(day);
-    currentItems = getItems(lesson).map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
-    if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
+    currentItems = getItems(lesson).map(cloneItem);
+    if(currentItems.length === 0) currentItems.push({ text: "", songId: null, subs: [] });
     openPickerIndex = null;
 
     document.getElementById("sheetTitle").textContent = currentLessonName;
@@ -1121,7 +1149,7 @@
     // blank placeholder item and show a simple message if there's
     // nothing planned, instead of an editable empty row.
     var items = locked
-      ? currentItems.filter(function(it){ return it.text.trim() || it.songId; })
+      ? currentItems.filter(itemHasContent)
       : currentItems;
 
     if(locked && items.length === 0){
@@ -1155,6 +1183,26 @@
           '<div class="item-song-picker" data-idx="' + idx + '" style="display:none;"></div>';
       }
 
+      var subsHtml = "";
+      var subList = Array.isArray(item.subs) ? item.subs : [];
+      if(locked){
+        subList = itemSubs(item);
+        if(subList.length){
+          subsHtml = '<ul class="item-subs-view">' + subList.map(function(t){ return '<li>' + escapeHtml(t) + '</li>'; }).join("") + '</ul>';
+        }
+      } else {
+        subsHtml = '<div class="item-subs">' +
+          subList.map(function(t, si){
+            return '<div class="sub-row"><span class="sub-bullet">&bull;</span>' +
+              '<textarea class="sub-text" rows="1" data-idx="' + idx + '" data-sub="' + si + '" placeholder="תת-נושא">' + escapeHtml(t) + '</textarea>' +
+              '<button class="sub-remove" data-idx="' + idx + '" data-sub="' + si + '" data-action="remove-sub" aria-label="מחיקת תת-נושא">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+              '</button></div>';
+          }).join("") +
+          '<button class="item-add-song-btn sub-add" data-idx="' + idx + '" data-action="add-sub">+ הוספת תת-נושא</button>' +
+        '</div>';
+      }
+
       row.innerHTML =
         '<div class="item-top">' +
           '<div class="item-number">' + (idx+1) + '.</div>' +
@@ -1165,7 +1213,8 @@
               '</button>'
             : '') +
         '</div>' +
-        (songHtml ? '<div class="item-song-area">' + songHtml + '</div>' : '');
+        (songHtml ? '<div class="item-song-area">' + songHtml + '</div>' : '') +
+        subsHtml;
 
       wrap.appendChild(row);
     });
@@ -1185,14 +1234,31 @@
     wrap.querySelectorAll(".item-text").forEach(function(ta){
       ta.oninput = function(){ currentItems[+ta.dataset.idx].text = ta.value; autoSizeTextarea(ta); };
     });
+    wrap.querySelectorAll(".sub-text").forEach(function(ta){
+      autoSizeTextarea(ta);
+      ta.oninput = function(){ currentItems[+ta.dataset.idx].subs[+ta.dataset.sub] = ta.value; autoSizeTextarea(ta); };
+    });
 
     // all buttons within the items list are handled through one delegated click handler
     wrap.querySelectorAll("[data-action]").forEach(function(btn){
-      btn.onclick = function(){ handleItemAction(btn.dataset.action, +btn.dataset.idx); };
+      btn.onclick = function(){ handleItemAction(btn.dataset.action, +btn.dataset.idx, btn.dataset.sub === undefined ? null : +btn.dataset.sub); };
     });
   }
 
-  function handleItemAction(action, idx){
+  function handleItemAction(action, idx, subIdx){
+    if(action === "add-sub"){
+      if(!Array.isArray(currentItems[idx].subs)) currentItems[idx].subs = [];
+      currentItems[idx].subs.push("");
+      renderItemsList();
+      var boxes = document.querySelectorAll('.sub-text[data-idx="' + idx + '"]');
+      if(boxes.length) boxes[boxes.length-1].focus();
+      return;
+    }
+    if(action === "remove-sub"){
+      currentItems[idx].subs.splice(subIdx, 1);
+      renderItemsList();
+      return;
+    }
     if(action === "remove-item"){
       // Removing the only remaining item would leave nothing to type into,
       // so instead of deleting the row itself, just erase its text and
@@ -1201,7 +1267,7 @@
       if(currentItems.length > 1){
         currentItems.splice(idx, 1);
       } else {
-        currentItems[idx] = { text: "", songId: null };
+        currentItems[idx] = { text: "", songId: null, subs: [] };
       }
       renderItemsList();
 
@@ -1257,7 +1323,7 @@
   }
 
   document.getElementById("btnAddItem").onclick = function(){
-    currentItems.push({ text: "", songId: null });
+    currentItems.push({ text: "", songId: null, subs: [] });
     renderItemsList();
   };
 
@@ -1341,8 +1407,8 @@
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
         '</button>';
       item.querySelector(".reuse-main").onclick = function(){
-        currentItems = tpl.items.map(function(it){ return { text: it.text || "", songId: it.songId || null }; });
-        if(currentItems.length === 0) currentItems.push({ text: "", songId: null });
+        currentItems = tpl.items.map(cloneItem);
+        if(currentItems.length === 0) currentItems.push({ text: "", songId: null, subs: [] });
         renderItemsList();
         showToast('נטען "' + tpl.name + '"');
       };
@@ -1375,8 +1441,8 @@
     if(saveBtn.disabled) return;
     saveBtn.disabled = true;
 
-    var cleanItems = currentItems.filter(function(it){ return it.text.trim() || it.songId; })
-      .map(function(it){ return { text: it.text.trim(), songId: it.songId }; });
+    var cleanItems = currentItems.filter(itemHasContent)
+      .map(function(it){ return { text: it.text.trim(), songId: it.songId, subs: itemSubs(it) }; });
 
     if(cleanItems.length === 0){
       if(currentLessonId !== null){
@@ -1654,6 +1720,7 @@
           }
           line.innerHTML =
             '<div class="template-detail-text">' + (it.text ? escapeHtml(it.text) : "(אין הערות)") + '</div>' +
+            (itemSubs(it).length ? '<ul class="template-detail-subs">' + itemSubs(it).map(function(t){ return '<li>' + escapeHtml(t) + '</li>'; }).join("") + '</ul>' : '') +
             (songHtml ? '<div class="template-detail-song">' + songHtml + '</div>' : '');
           if(it.songId){
             line.querySelector(".play-btn").onclick = function(){

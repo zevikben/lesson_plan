@@ -52,6 +52,10 @@ that, you can turn on Airplane Mode and it keeps working completely.
 - If you save a lesson under a name that's already used elsewhere in the
   week, you're asked whether to replace that other lesson with what you
   just wrote (it moves to this day) - or cancel and pick a different name.
+- Inside each item, **+ Add sub-topic** adds unnumbered bullet lines under
+  it (as many as you like, each with its own delete button). They are saved
+  with the lesson, copied along with it from the saved-lessons list, and
+  shown as bullets in Ready mode.
 - To remove a lesson, either open it and tap **Delete lesson**, or tap the
   small ✕ directly on its card in the day's list.
 - **Add new MP3**: pick an audio file from your phone (e.g. from Files, or
