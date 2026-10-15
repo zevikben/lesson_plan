@@ -223,6 +223,7 @@
 
   .item-text.is-empty::before{ content:attr(data-ph); color:var(--ink-soft); opacity:.6; position:absolute; pointer-events:none; }
   .item-text .sub-heading{ margin-top:0; }
+  .song-line{ margin:4px 0; }
   .item-text-view{ flex:1; font-size:14.5px; line-height:1.5; color:var(--ink); padding-top:9px; }
   .sub-heading{ font-weight:700; color:var(--ink); margin-top:6px; }
   .template-detail-text .sub-heading{ font-size:13.5px; }
@@ -764,13 +765,51 @@
 
   // Each item can carry unnumbered sub-topics (item.subs, an array of
   // strings). Older saved items simply don't have the field.
-  // Lines starting with "## " are unnumbered sub-headings inside an item's text.
-  function richTextHtml(text){
-    return String(text || "").split("\n").map(function(line){
+  // Item text is a list of lines. "## x" = unnumbered bold sub-heading,
+  // "@@song:ID" = a song sitting right at that spot (so each sub-heading
+  // can carry its own song).
+  var SONG_RE = /^\s*@@song:(\d+)\s*$/;
+  var PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  var X_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  function songChipHtml(id, editable){
+    return '<span class="item-song-chip">' +
+      '<button class="play-btn" data-song-play="' + id + '" aria-label="נגינה">' + PLAY_SVG + '</button>' +
+      '<span class="name">' + escapeHtml(songName(id)) + '</span>' +
+      (editable ? '<button class="remove-btn" data-song-remove="' + id + '" aria-label="הסרת שיר">' + X_SVG + '</button>' : '') +
+      '</span>';
+  }
+  function richTextHtml(text, editable){
+    var all = String(text || "").split("\n");
+    // in the editor, always leave a normal line after a trailing song so there is somewhere to type
+    if(editable && all.length && SONG_RE.test(all[all.length-1])) all.push("");
+    return all.map(function(line){
+      var sm = line.match(SONG_RE);
+      if(sm) return '<div class="song-line" data-song="' + (+sm[1]) + '"' + (editable ? ' contenteditable="false"' : '') + '>' + songChipHtml(+sm[1], editable) + '</div>';
       var m = line.match(/^\s*##\s?(.*)$/);
       if(m) return '<div class="sub-heading">' + escapeHtml(m[1]) + '</div>';
-      return '<div class="text-line">' + (line.trim() ? escapeHtml(line) : "&nbsp;") + '</div>';
+      return '<div class="text-line">' + (line.trim() ? escapeHtml(line) : (editable ? "<br>" : "&nbsp;")) + '</div>';
     }).join("");
+  }
+  // every song id an item uses (legacy single songId + inline song lines)
+  function itemSongIds(it){
+    var ids = [];
+    if(it && it.songId) ids.push(it.songId);
+    String((it && it.text) || "").split("\n").forEach(function(l){
+      var m = l.match(SONG_RE); if(m) ids.push(+m[1]);
+    });
+    return ids;
+  }
+  function slotPreviewText(it){
+    var lines = String((it && it.text) || "").split("\n");
+    for(var i = 0; i < lines.length; i++){
+      if(SONG_RE.test(lines[i])) continue;
+      var t = lines[i].replace(/^\s*##\s?/, "").trim();
+      if(t) return t;
+    }
+    return "";
+  }
+  function countSongs(items){
+    return items.reduce(function(n, it){ return n + itemSongIds(it).length; }, 0);
   }
   // Reads an item's editable box back into plain text; heading lines are
   // stored with a "## " prefix (never shown to the person).
@@ -779,6 +818,7 @@
     el.childNodes.forEach(function(n){
       if(n.nodeType === 3){ lines.push(n.textContent); }
       else if(n.nodeType === 1){
+        if(n.dataset && n.dataset.song){ lines.push("@@song:" + n.dataset.song); return; }
         var t = n.textContent;
         lines.push(n.classList && n.classList.contains("sub-heading") ? "## " + t : t);
       }
@@ -795,8 +835,9 @@
   }
   function cloneItem(it){
     var t = it.text || "";
+    if(it.songId) t += (t ? "\n" : "") + "@@song:" + it.songId;
     itemSubs(it).forEach(function(sb){ t += (t ? "\n" : "") + "## " + sb; });
-    return { text: t, songId: it.songId || null, subs: [] };
+    return { text: t, songId: null, subs: [] };
   }
 
   function lessonsForDay(day){
@@ -962,11 +1003,11 @@
       if(items.length === 0){
         bodyHtml = '<div class="slot-empty-label">הקש/י להוספת תוכן</div>';
       } else {
-        var songCount = items.filter(function(it){ return it.songId; }).length;
+        var songCount = countSongs(items);
         var first = items[0];
         bodyHtml =
           '<div class="slot-text-preview">' +
-            (first.text ? escapeHtml(first.text) : '<em>(אין טקסט)</em>') +
+            (slotPreviewText(first) ? escapeHtml(slotPreviewText(first)) : '<em>(אין טקסט)</em>') +
             (items.length > 1 ? ' <span style="color:var(--ink-soft); font-weight:600;">+עוד ' + (items.length-1) + '</span>' : '') +
           '</div>' +
           (songCount > 0 ? '<div class="slot-song">' + noteIcon() + (songCount===1 ? 'שיר אחד מצורף' : songCount + ' שירים מצורפים') + '</div>' : '');
@@ -1176,34 +1217,12 @@
       var row = document.createElement("div");
       row.className = "item-row";
 
-      var songHtml;
-      if(item.songId){
-        songHtml =
-          '<span class="item-song-chip">' +
-            '<button class="play-btn" data-idx="' + idx + '" data-action="play" aria-label="נגינה">' +
-              '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
-            '</button>' +
-            '<span class="name">' + escapeHtml(songName(item.songId)) + '</span>' +
-            (locked ? '' :
-              '<button class="remove-btn" data-idx="' + idx + '" data-action="remove-song" aria-label="הסרת שיר">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
-              '</button>') +
-          '</span>';
-      } else if(locked){
-        songHtml = "";
-      } else {
-        songHtml =
-          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-new">+ הוספת קובץ MP3 חדש</button> ' +
-          '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-pick">+ בחירה מהספרייה</button>' +
-          '<div class="item-song-picker" data-idx="' + idx + '" style="display:none;"></div>';
-      }
-
       row.innerHTML =
         '<div class="item-top">' +
           '<div class="item-number">' + (idx+1) + '.</div>' +
           (locked
-            ? '<div class="item-text-view">' + richTextHtml(item.text) + '</div>'
-            : '<div class="item-text' + (item.text.trim() ? '' : ' is-empty') + '" contenteditable="true" data-idx="' + idx + '" data-ph="מה מלמדים בשיעור הזה?">' + (item.text ? richTextHtml(item.text) : '<div class="text-line"><br></div>') + '</div>') +
+            ? '<div class="item-text-view">' + richTextHtml(item.text, false) + '</div>'
+            : '<div class="item-text' + (item.text.trim() ? '' : ' is-empty') + '" contenteditable="true" data-idx="' + idx + '" data-ph="מה מלמדים בשיעור הזה?">' + (item.text ? richTextHtml(item.text, true) : '<div class="text-line"><br></div>') + '</div>') +
           (!locked
             ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="מחיקת פריט">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>' +
@@ -1211,18 +1230,34 @@
             : '') +
         '</div>' +
         (locked ? '' : '<div class="item-song-area"><button class="item-add-song-btn" data-idx="' + idx + '" data-action="toggle-h2"><b>B</b> כותרת משנה (מודגש, בלי מספור)</button></div>') +
-        (songHtml ? '<div class="item-song-area">' + songHtml + '</div>' : '');
+        (locked ? '' :
+          '<div class="item-song-area">' +
+            '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-new">+ הוספת קובץ MP3 חדש</button> ' +
+            '<button class="item-add-song-btn" data-idx="' + idx + '" data-action="add-song-pick">+ בחירה מהספרייה</button>' +
+            '<div class="item-song-picker" data-idx="' + idx + '" style="display:none;"></div>' +
+          '</div>');
 
       wrap.appendChild(row);
     });
 
     // fit every text box exactly to its content - no wasted blank space
 
-    // Play is read-only - wire it up whether or not the app is locked,
-    // so songs can always be listened to, even in Ready (view-only) mode.
-    wrap.querySelectorAll('[data-action="play"]').forEach(function(btn){
-      btn.onclick = function(){ handleItemAction("play", +btn.dataset.idx); };
-    });
+    // Play works in both modes (delegated, so it also covers songs inside the text);
+    // removing a song is edit-only.
+    wrap.onclick = function(e){
+      var pb = e.target.closest ? e.target.closest("[data-song-play]") : null;
+      if(pb){ playSongById(+pb.dataset.songPlay, audioEl); return; }
+      var rb = e.target.closest ? e.target.closest("[data-song-remove]") : null;
+      if(rb && !locked){
+        var line = rb.closest(".song-line");
+        var ed = rb.closest(".item-text");
+        if(line && ed){
+          line.parentNode.removeChild(line);
+          currentItems[+ed.dataset.idx].text = editorToText(ed);
+          if(!ed.firstChild) ed.innerHTML = '<div class="text-line"><br></div>';
+        }
+      }
+    };
 
     if(locked) return; // nothing else below is interactive in view-only mode
 
@@ -1263,8 +1298,40 @@
     // all buttons within the items list are handled through one delegated click handler
     wrap.querySelectorAll("[data-action]").forEach(function(btn){
       // keep the caret in the text box when tapping a button next to it
-      btn.onmousedown = function(e){ if(btn.dataset.action === "toggle-h2") e.preventDefault(); };
+      btn.onmousedown = function(e){ if(/^(toggle-h2|add-song-new|add-song-pick)$/.test(btn.dataset.action)) e.preventDefault(); };
       btn.onclick = function(){ handleItemAction(btn.dataset.action, +btn.dataset.idx, null); };
+    });
+  }
+
+  // index of the text line the caret is on (or last was on) in item idx; -1 = end
+  function currentLineIndex(idx){
+    var ed = document.querySelector('.item-text[data-idx="' + idx + '"]');
+    if(!ed) return -1;
+    var sel = window.getSelection();
+    var node = (sel && sel.anchorNode && ed.contains(sel.anchorNode)) ? sel.anchorNode : ed._lastNode;
+    if(!node || !ed.contains(node)) return -1;
+    while(node.parentNode !== ed) node = node.parentNode;
+    return Array.prototype.indexOf.call(ed.childNodes, node);
+  }
+  // put "@@song:id" on its own line right after line k (or at the end)
+  function insertSongLine(idx, id, k){
+    var lines = (currentItems[idx].text || "").split("\n");
+    if(!currentItems[idx].text) lines = [];
+    if(k >= 0 && k < lines.length) lines.splice(k + 1, 0, "@@song:" + id);
+    else lines.push("@@song:" + id);
+    currentItems[idx].text = lines.join("\n");
+  }
+  function playSongById(songId, el){
+    // look the song up in the already-loaded list (no async before play(), iOS needs that)
+    var sg = songs.filter(function(x){ return x.id === songId; })[0];
+    if(!sg){ showToast("השיר לא נמצא"); return; }
+    var url = URL.createObjectURL(sg.blob);
+    objectUrls.push(url);
+    el.src = url;
+    el.style.display = "block";
+    el.play().catch(function(err){
+      console.warn("Playback blocked", err);
+      showToast("לא ניתן לנגן - הקש/י שוב על נגן");
     });
   }
 
@@ -1302,30 +1369,9 @@
       }
       renderItemsList();
 
-    } else if(action === "remove-song"){
-      currentItems[idx].songId = null;
-      renderItemsList();
-
-    } else if(action === "play"){
-      var songId = currentItems[idx].songId;
-      if(!songId) return;
-      // Look the song up in the already-loaded list rather than making a
-      // fresh async DB request here - on iOS Safari, .play() only counts
-      // as a direct response to the tap if nothing asynchronous happens
-      // first, otherwise playback is silently blocked.
-      var s = songs.filter(function(sg){ return sg.id === songId; })[0];
-      if(!s){ showToast("השיר לא נמצא"); return; }
-      var url = URL.createObjectURL(s.blob);
-      objectUrls.push(url);
-      audioEl.src = url;
-      audioEl.style.display = "block";
-      audioEl.play().catch(function(err){
-        console.warn("Playback blocked", err);
-        showToast("לא ניתן לנגן - הקש/י שוב על נגן");
-      });
-
     } else if(action === "add-song-new"){
       pendingUploadIndex = idx;
+      pendingUploadLine = currentLineIndex(idx);
       document.getElementById("fileInput").click();
 
     } else if(action === "add-song-pick"){
@@ -1333,6 +1379,7 @@
       if(!picker) return;
       if(openPickerIndex === idx){ openPickerIndex = null; picker.style.display = "none"; return; }
       openPickerIndex = idx;
+      var pickLine = currentLineIndex(idx);
       if(songs.length === 0){
         picker.innerHTML = '<div class="empty-note">עדיין אין שירים שמורים &mdash; יש להוסיף קובץ MP3 חדש קודם.</div>';
       } else {
@@ -1342,7 +1389,7 @@
           opt.className = "song-picker-item";
           opt.innerHTML = '<span class="name">' + escapeHtml(s.name) + '</span>';
           opt.onclick = function(){
-            currentItems[idx].songId = s.id;
+            insertSongLine(idx, s.id, pickLine);
             openPickerIndex = null;
             renderItemsList();
           };
@@ -1360,13 +1407,15 @@
 
   // --- add new mp3 (shared file input, used from whichever item requested it) ---
   var pendingUploadIndex = null;
+  var pendingUploadLine = -1;
   document.getElementById("fileInput").onchange = function(e){
     var file = e.target.files[0];
     if(!file || pendingUploadIndex === null) return;
     var idx = pendingUploadIndex;
+    var pendingUploadLineSaved = pendingUploadLine;
     addSong(file.name.replace(/\.mp3$/i,""), file, function(newId){
       refreshAll(function(){
-        currentItems[idx].songId = newId;
+        insertSongLine(idx, newId, pendingUploadLineSaved);
         renderItemsList();
         showToast("השיר נשמר בספרייה שלך");
       });
@@ -1424,7 +1473,7 @@
     list.innerHTML = "";
     filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
       var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
-      var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
+      var songCount = countSongs(tpl.items);
 
       var item = document.createElement("div");
       item.className = "reuse-item";
@@ -1473,7 +1522,7 @@
     saveBtn.disabled = true;
 
     var cleanItems = currentItems.filter(itemHasContent)
-      .map(function(it){ return { text: it.text.trim(), songId: it.songId, subs: [] }; });
+      .map(function(it){ return { text: it.text.trim(), songId: null, subs: [] }; });
 
     if(cleanItems.length === 0){
       if(currentLessonId !== null){
@@ -1573,7 +1622,7 @@
 
   function usageCount(songId){
     return dayLessons.filter(function(l){
-      return getItems(l).some(function(it){ return it.songId === songId; });
+      return getItems(l).some(function(it){ return itemSongIds(it).indexOf(songId) >= 0; });
     }).length;
   }
 
@@ -1713,7 +1762,7 @@
     }
     filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(tpl){
       var previewText = tpl.items.map(function(it){ return it.text ? escapeHtml(it.text) : null; }).filter(Boolean).join(" &middot; ");
-      var songCount = tpl.items.filter(function(it){ return it.songId; }).length;
+      var songCount = countSongs(tpl.items);
 
       var row = document.createElement("div");
       row.className = "library-song-item template-row";
@@ -1739,30 +1788,12 @@
         tpl.items.forEach(function(it){
           var line = document.createElement("div");
           line.className = "template-detail-item";
-          var songHtml = "";
-          if(it.songId){
-            songHtml =
-              '<span class="item-song-chip">' +
-                '<button class="play-btn" aria-label="נגינה">' +
-                  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
-                '</button>' +
-                '<span class="name">' + escapeHtml(songName(it.songId)) + '</span>' +
-              '</span>';
-          }
-          line.innerHTML =
-            '<div class="template-detail-text">' + (cloneItem(it).text ? richTextHtml(cloneItem(it).text) : "(אין הערות)") + '</div>' +
-            (songHtml ? '<div class="template-detail-song">' + songHtml + '</div>' : '');
-          if(it.songId){
-            line.querySelector(".play-btn").onclick = function(){
-              var s = songs.filter(function(sg){ return sg.id === it.songId; })[0];
-              if(!s){ showToast("השיר לא נמצא"); return; }
-              var url = URL.createObjectURL(s.blob);
-              objectUrls.push(url);
-              templatesAudioEl.src = url;
-              templatesAudioEl.style.display = "block";
-              templatesAudioEl.play().catch(function(){ showToast("לא ניתן לנגן - יש לנסות שוב"); });
-            };
-          }
+          var t = cloneItem(it).text;
+          line.innerHTML = '<div class="template-detail-text">' + (t ? richTextHtml(t, false) : "(אין הערות)") + '</div>';
+          line.onclick = function(e){
+            var pb = e.target.closest ? e.target.closest("[data-song-play]") : null;
+            if(pb) playSongById(+pb.dataset.songPlay, templatesAudioEl);
+          };
           detail.appendChild(line);
         });
         detail.style.display = "block";
