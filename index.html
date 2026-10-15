@@ -204,13 +204,14 @@
     font-family:var(--serif); font-weight:700; font-size:13px; color:var(--gold);
     width:20px; flex:0 0 auto; padding-top:11px; text-align:center;
   }
-  textarea.item-text{
-    flex:1; min-height:20px; resize:none; width:100%; overflow:hidden;
+  .item-text{
+    flex:1; min-height:20px; width:100%; min-width:0; position:relative;
+    white-space:pre-wrap; word-break:break-word; -webkit-user-select:text; user-select:text;
     border:1px solid var(--line); border-radius:8px; padding:9px 10px;
     font-family:var(--sans); font-size:14.5px; color:var(--ink);
     background:var(--paper-raised); line-height:1.4;
   }
-  textarea.item-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
+  .item-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
 
   .item-remove{
     background:transparent; border:1px solid var(--line); border-radius:8px;
@@ -220,20 +221,11 @@
   }
   .item-remove svg{ width:16px; height:16px; }
 
-  .item-subs{ margin-top:6px; padding-inline-start:28px; display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
-  .sub-row{ display:flex; gap:6px; align-items:flex-start; width:100%; }
-  .sub-bullet{ color:var(--gold); width:12px; flex:0 0 auto; padding-top:7px; text-align:center; }
-  textarea.sub-text{
-    flex:1; min-height:20px; resize:none; overflow:hidden;
-    border:1px solid var(--line); border-radius:8px; padding:6px 9px;
-    font-family:var(--sans); font-size:13.5px; color:var(--ink);
-    background:var(--paper-raised); line-height:1.4;
-  }
-  textarea.sub-text:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
-  .sub-remove{ background:transparent; border:1px solid var(--line); border-radius:8px; color:var(--danger); width:28px; height:28px; flex:0 0 auto; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-  .sub-remove svg{ width:14px; height:14px; }
-  .item-subs-view{ list-style:disc; margin:4px 0 0; padding-inline-start:46px; font-size:14px; line-height:1.5; color:var(--ink); }
-  .template-detail-subs{ margin:2px 0 0; padding-inline-start:22px; font-size:13px; }
+  .item-text.is-empty::before{ content:attr(data-ph); color:var(--ink-soft); opacity:.6; position:absolute; pointer-events:none; }
+  .item-text .sub-heading{ margin-top:0; }
+  .item-text-view{ flex:1; font-size:14.5px; line-height:1.5; color:var(--ink); padding-top:9px; }
+  .sub-heading{ font-weight:700; color:var(--ink); margin-top:6px; }
+  .template-detail-text .sub-heading{ font-size:13.5px; }
   .item-song-area{ margin-top:2px; padding-inline-start:28px; }
   .item-song-chip{
     display:inline-flex; align-items:center; gap:8px;
@@ -772,6 +764,27 @@
 
   // Each item can carry unnumbered sub-topics (item.subs, an array of
   // strings). Older saved items simply don't have the field.
+  // Lines starting with "## " are unnumbered sub-headings inside an item's text.
+  function richTextHtml(text){
+    return String(text || "").split("\n").map(function(line){
+      var m = line.match(/^\s*##\s?(.*)$/);
+      if(m) return '<div class="sub-heading">' + escapeHtml(m[1]) + '</div>';
+      return '<div class="text-line">' + (line.trim() ? escapeHtml(line) : "&nbsp;") + '</div>';
+    }).join("");
+  }
+  // Reads an item's editable box back into plain text; heading lines are
+  // stored with a "## " prefix (never shown to the person).
+  function editorToText(el){
+    var lines = [];
+    el.childNodes.forEach(function(n){
+      if(n.nodeType === 3){ lines.push(n.textContent); }
+      else if(n.nodeType === 1){
+        var t = n.textContent;
+        lines.push(n.classList && n.classList.contains("sub-heading") ? "## " + t : t);
+      }
+    });
+    return lines.join("\n").replace(/\n+$/, "");
+  }
   function itemSubs(it){
     return (it && Array.isArray(it.subs))
       ? it.subs.filter(function(s){ return typeof s === "string" && s.trim(); }).map(function(s){ return s.trim(); })
@@ -781,7 +794,9 @@
     return !!(it && ((it.text && it.text.trim()) || it.songId || itemSubs(it).length));
   }
   function cloneItem(it){
-    return { text: it.text || "", songId: it.songId || null, subs: Array.isArray(it.subs) ? it.subs.slice() : [] };
+    var t = it.text || "";
+    itemSubs(it).forEach(function(sb){ t += (t ? "\n" : "") + "## " + sb; });
+    return { text: t, songId: it.songId || null, subs: [] };
   }
 
   function lessonsForDay(day){
@@ -1183,44 +1198,25 @@
           '<div class="item-song-picker" data-idx="' + idx + '" style="display:none;"></div>';
       }
 
-      var subsHtml = "";
-      var subList = Array.isArray(item.subs) ? item.subs : [];
-      if(locked){
-        subList = itemSubs(item);
-        if(subList.length){
-          subsHtml = '<ul class="item-subs-view">' + subList.map(function(t){ return '<li>' + escapeHtml(t) + '</li>'; }).join("") + '</ul>';
-        }
-      } else {
-        subsHtml = '<div class="item-subs">' +
-          subList.map(function(t, si){
-            return '<div class="sub-row"><span class="sub-bullet">&bull;</span>' +
-              '<textarea class="sub-text" rows="1" data-idx="' + idx + '" data-sub="' + si + '" placeholder="תת-נושא">' + escapeHtml(t) + '</textarea>' +
-              '<button class="sub-remove" data-idx="' + idx + '" data-sub="' + si + '" data-action="remove-sub" aria-label="מחיקת תת-נושא">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
-              '</button></div>';
-          }).join("") +
-          '<button class="item-add-song-btn sub-add" data-idx="' + idx + '" data-action="add-sub">+ הוספת תת-נושא</button>' +
-        '</div>';
-      }
-
       row.innerHTML =
         '<div class="item-top">' +
           '<div class="item-number">' + (idx+1) + '.</div>' +
-          '<textarea class="item-text" data-idx="' + idx + '" placeholder="מה מלמדים בשיעור הזה?"' + (locked ? ' readonly' : '') + '>' + escapeHtml(item.text) + '</textarea>' +
+          (locked
+            ? '<div class="item-text-view">' + richTextHtml(item.text) + '</div>'
+            : '<div class="item-text' + (item.text.trim() ? '' : ' is-empty') + '" contenteditable="true" data-idx="' + idx + '" data-ph="מה מלמדים בשיעור הזה?">' + (item.text ? richTextHtml(item.text) : '<div class="text-line"><br></div>') + '</div>') +
           (!locked
             ? '<button class="item-remove" data-idx="' + idx + '" data-action="remove-item" aria-label="מחיקת פריט">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>' +
               '</button>'
             : '') +
         '</div>' +
-        (songHtml ? '<div class="item-song-area">' + songHtml + '</div>' : '') +
-        subsHtml;
+        (locked ? '' : '<div class="item-song-area"><button class="item-add-song-btn" data-idx="' + idx + '" data-action="toggle-h2"><b>B</b> כותרת משנה (מודגש, בלי מספור)</button></div>') +
+        (songHtml ? '<div class="item-song-area">' + songHtml + '</div>' : '');
 
       wrap.appendChild(row);
     });
 
     // fit every text box exactly to its content - no wasted blank space
-    wrap.querySelectorAll(".item-text").forEach(autoSizeTextarea);
 
     // Play is read-only - wire it up whether or not the app is locked,
     // so songs can always be listened to, even in Ready (view-only) mode.
@@ -1232,31 +1228,66 @@
 
     // text edits update the in-memory array directly - no re-render, so focus/cursor is preserved
     wrap.querySelectorAll(".item-text").forEach(function(ta){
-      ta.oninput = function(){ currentItems[+ta.dataset.idx].text = ta.value; autoSizeTextarea(ta); };
-    });
-    wrap.querySelectorAll(".sub-text").forEach(function(ta){
-      autoSizeTextarea(ta);
-      ta.oninput = function(){ currentItems[+ta.dataset.idx].subs[+ta.dataset.sub] = ta.value; autoSizeTextarea(ta); };
+      var remember = function(){
+        var sel = window.getSelection();
+        if(sel && sel.anchorNode && ta.contains(sel.anchorNode)) ta._lastNode = sel.anchorNode;
+      };
+      ta.oninput = function(){
+        currentItems[+ta.dataset.idx].text = editorToText(ta);
+        ta.classList.toggle("is-empty", !ta.textContent.trim() && !ta.querySelector(".sub-heading"));
+        remember();
+      };
+      ta.onkeydown = function(e){
+        if(e.key !== "Enter") return;
+        // a new line after a heading starts as a normal line
+        setTimeout(function(){
+          var sel = window.getSelection();
+          var n = sel && sel.anchorNode;
+          if(!n || !ta.contains(n)) return;
+          while(n.parentNode !== ta) n = n.parentNode;
+          if(n.nodeType === 1 && n.classList.contains("sub-heading") &&
+             n.previousSibling && n.previousSibling.classList && n.previousSibling.classList.contains("sub-heading")){
+            n.classList.remove("sub-heading"); n.classList.add("text-line");
+            currentItems[+ta.dataset.idx].text = editorToText(ta);
+          }
+        }, 0);
+      };
+      ta.onkeyup = ta.onclick = ta.onfocus = remember;
+      ta.onpaste = function(e){
+        e.preventDefault();
+        var t = (e.clipboardData || window.clipboardData).getData("text");
+        document.execCommand("insertText", false, t);
+      };
     });
 
     // all buttons within the items list are handled through one delegated click handler
     wrap.querySelectorAll("[data-action]").forEach(function(btn){
-      btn.onclick = function(){ handleItemAction(btn.dataset.action, +btn.dataset.idx, btn.dataset.sub === undefined ? null : +btn.dataset.sub); };
+      // keep the caret in the text box when tapping a button next to it
+      btn.onmousedown = function(e){ if(btn.dataset.action === "toggle-h2") e.preventDefault(); };
+      btn.onclick = function(){ handleItemAction(btn.dataset.action, +btn.dataset.idx, null); };
     });
   }
 
   function handleItemAction(action, idx, subIdx){
-    if(action === "add-sub"){
-      if(!Array.isArray(currentItems[idx].subs)) currentItems[idx].subs = [];
-      currentItems[idx].subs.push("");
-      renderItemsList();
-      var boxes = document.querySelectorAll('.sub-text[data-idx="' + idx + '"]');
-      if(boxes.length) boxes[boxes.length-1].focus();
-      return;
-    }
-    if(action === "remove-sub"){
-      currentItems[idx].subs.splice(subIdx, 1);
-      renderItemsList();
+    if(action === "toggle-h2"){
+      var ed = document.querySelector('.item-text[data-idx="' + idx + '"]');
+      if(!ed) return;
+      var sel = window.getSelection();
+      var node = (sel && sel.anchorNode && ed.contains(sel.anchorNode)) ? sel.anchorNode : ed._lastNode;
+      if(!node || !ed.contains(node)) node = ed.lastChild;
+      if(!node){ ed.innerHTML = '<div class="text-line"><br></div>'; node = ed.firstChild; }
+      while(node.parentNode !== ed) node = node.parentNode;
+      if(node.nodeType === 3){
+        var wrapDiv = document.createElement("div");
+        ed.replaceChild(wrapDiv, node);
+        wrapDiv.appendChild(node);
+        node = wrapDiv;
+      }
+      var makeHeading = !node.classList.contains("sub-heading");
+      node.classList.toggle("sub-heading", makeHeading);
+      node.classList.toggle("text-line", !makeHeading);
+      currentItems[idx].text = editorToText(ed);
+      ed.classList.toggle("is-empty", !ed.textContent.trim() && !ed.querySelector(".sub-heading"));
       return;
     }
     if(action === "remove-item"){
@@ -1442,7 +1473,7 @@
     saveBtn.disabled = true;
 
     var cleanItems = currentItems.filter(itemHasContent)
-      .map(function(it){ return { text: it.text.trim(), songId: it.songId, subs: itemSubs(it) }; });
+      .map(function(it){ return { text: it.text.trim(), songId: it.songId, subs: [] }; });
 
     if(cleanItems.length === 0){
       if(currentLessonId !== null){
@@ -1719,8 +1750,7 @@
               '</span>';
           }
           line.innerHTML =
-            '<div class="template-detail-text">' + (it.text ? escapeHtml(it.text) : "(אין הערות)") + '</div>' +
-            (itemSubs(it).length ? '<ul class="template-detail-subs">' + itemSubs(it).map(function(t){ return '<li>' + escapeHtml(t) + '</li>'; }).join("") + '</ul>' : '') +
+            '<div class="template-detail-text">' + (cloneItem(it).text ? richTextHtml(cloneItem(it).text) : "(אין הערות)") + '</div>' +
             (songHtml ? '<div class="template-detail-song">' + songHtml + '</div>' : '');
           if(it.songId){
             line.querySelector(".play-btn").onclick = function(){
@@ -2075,8 +2105,20 @@
   // ---------------------------------------------------------------
   if("serviceWorker" in navigator){
     window.addEventListener("load", function(){
-      navigator.serviceWorker.register("service-worker.js").catch(function(err){
+      var hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register("service-worker.js").then(function(reg){
+        reg.update();
+      }).catch(function(err){
         console.warn("Service worker registration failed", err);
+      });
+      // when a new version takes over, reload once so it shows immediately
+      // (skipped while a sheet is open, so nothing being typed is lost)
+      var reloaded = false;
+      navigator.serviceWorker.addEventListener("controllerchange", function(){
+        if(!hadController || reloaded) return;
+        if(document.querySelector(".sheet.open")) return;
+        reloaded = true;
+        location.reload();
       });
     });
   }
