@@ -112,18 +112,25 @@ week there (bigger screen, real keyboard), and then move it to your phone:
 You can also export from the phone and import back on the laptop the same
 way — it works in either direction.
 
-## Google Drive (export + shared database)
-In **Transfer** (העברה) there is a Google Drive section:
-- **ייצוא ל-Drive** uploads one dated backup file (same content as
-  "Export file") into a Drive folder.
-- **שמירת השיעורים והשירים ב-Drive** keeps your database in that folder:
-  one `lessons.json` (lessons, saved-lessons library, settings) plus one
-  `song-<id>.mp3` per song. Only songs not already there are uploaded.
-- **טעינה מ-Drive** replaces what is on the device with the Drive copy -
-  use it on the phone after saving from the laptop.
-- Settings (open "הגדרות Google Drive"): your Client ID, the Drive folder
-  name (default "Weekly Lesson Plan"), and an optional automatic save to
-  Drive a few seconds after every change while you are signed in.
+## Google Drive (lessons and songs, kept as named files)
+In **Transfer** (העברה) there is a Google Drive section. Everything lives in
+one Drive folder (default "Weekly Lesson Plan"):
+- every lesson is its own file **named after the lesson** (`<lesson name>.json`)
+- every song is its own file named after the song
+- `week-plan.json` remembers which lesson is on which day
+- `Backups/` holds the dated full exports made by **ייצוא ל-Drive**
+
+There is one place for both saving and reading: **סנכרון שיעורים ושירים עם
+Drive**. It uploads whatever is newer on this device and downloads whatever
+is newer on Drive (it never deletes anything on the device). Use it after
+editing on the laptop, and again on the phone. If you tick "לשמור כל שיעור גם
+ב-Drive", pressing **שמירה** on a lesson also saves that lesson (and its
+songs) to Drive right away; Google asks you to sign in again when the
+sign-in (about an hour) has expired. A lesson deleted from "השיעורים
+השמורים שלך" is also removed from Drive.
+
+Settings (open "הגדרות Google Drive"): your Client ID and the Drive folder
+name.
 
 One-time setup (free): in console.cloud.google.com create a project, enable
 the **Google Drive API**, configure the OAuth consent screen (add your own
