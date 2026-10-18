@@ -1,6 +1,6 @@
 // Bump this version string any time index.html/manifest/icons change,
 // so the service worker knows to fetch fresh copies.
-var CACHE_NAME = "lesson-planner-v42";
+var CACHE_NAME = "lesson-planner-v43";
 
 var APP_SHELL = [
   "./",
@@ -38,6 +38,8 @@ self.addEventListener("activate", function(event){
 // the app's own HTML/CSS/JS/icons.)
 self.addEventListener("fetch", function(event){
   if(event.request.method !== "GET") return;
+  // Google sign-in / Drive calls go straight to the network, never through the cache
+  if(new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(
     caches.match(event.request).then(function(cached){
       if(cached) return cached;

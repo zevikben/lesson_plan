@@ -112,6 +112,31 @@ week there (bigger screen, real keyboard), and then move it to your phone:
 You can also export from the phone and import back on the laptop the same
 way — it works in either direction.
 
+## Google Drive (export + shared database)
+In **Transfer** (העברה) there is a Google Drive section:
+- **ייצוא ל-Drive** uploads one dated backup file (same content as
+  "Export file") into a Drive folder.
+- **שמירת השיעורים והשירים ב-Drive** keeps your database in that folder:
+  one `lessons.json` (lessons, saved-lessons library, settings) plus one
+  `song-<id>.mp3` per song. Only songs not already there are uploaded.
+- **טעינה מ-Drive** replaces what is on the device with the Drive copy -
+  use it on the phone after saving from the laptop.
+- Settings (open "הגדרות Google Drive"): your Client ID, the Drive folder
+  name (default "Weekly Lesson Plan"), and an optional automatic save to
+  Drive a few seconds after every change while you are signed in.
+
+One-time setup (free): in console.cloud.google.com create a project, enable
+the **Google Drive API**, configure the OAuth consent screen (add your own
+Google account as a Test user), and create an **OAuth client ID** of type
+*Web application*. Under *Authorized JavaScript origins* add the address
+the app is served from, e.g. `https://yourname.github.io` (origin only, no
+path). Paste the Client ID into the app settings on each device. The app
+uses the `drive.file` permission, so it can only see files it created.
+You sign in with a Google popup when you tap a Drive button; the sign-in
+lasts about an hour, so automatic saving only works while it is active.
+If two devices both save, the newer save wins - the app warns you before
+overwriting a newer Drive copy.
+
 ## Ready / Edit mode
 Once a week's plan is finished, tap **Ready** in the top right. The app
 switches to a clean, view-only display: notes and songs are still all

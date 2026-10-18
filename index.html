@@ -391,6 +391,16 @@
   body.locked #sheet .sheet-scroll{ flex:1; }
 
   .transfer-row{ display:flex; gap:10px; margin-top:8px; }
+  .drive-box{ margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
+  .drive-box .transfer-row{ flex-direction:column; }
+  .drive-title{ font-weight:700; font-size:14px; margin-bottom:2px; }
+  .drive-state{ font-weight:600; font-size:12px; color:var(--ink-soft); margin-inline-start:6px; }
+  .drive-state.on{ color:#2e7d32; }
+  .drive-progress{ font-size:12.5px; color:var(--ink-soft); margin-top:8px; min-height:16px; }
+  .drive-settings{ margin-top:14px; }
+  .drive-settings summary{ cursor:pointer; font-weight:600; font-size:13.5px; padding:6px 0; }
+  .drive-input{ width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:14px; background:var(--paper-raised); color:var(--ink); font-family:var(--sans); }
+  .drive-check{ display:flex; gap:8px; align-items:flex-start; font-size:13px; margin-top:12px; line-height:1.4; }
   .transfer-note{ font-size:12px; color:var(--ink-soft); margin-top:8px; line-height:1.5; }
 
   .template-row{ align-items:flex-start; }
@@ -442,7 +452,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M21 7H9M7 13l-4 4 4 4M3 17h12"/></svg>
         העברה
       </button>
-      <button class="btn-ready" id="btnReady">עריכה</button>
+      <button class="btn-ready" id="btnReady">מצב עריכה</button>
     </div>
   </div>
   <div class="offline-badge" id="offlineBadge"><span class="dot"></span> לא מקוון &mdash; השינויים נשמרים במכשיר זה</div>
@@ -542,10 +552,49 @@
     </div>
     <div class="transfer-note">
       <strong>ייצוא</strong> שומר הכול &mdash; כל שיעור, שיר והגדרה &mdash;
-      לתוך קובץ אחד. <strong>ייבוא</strong> טוען את הקובץ הזה במכשיר אחר (למשל
-      הטלפון שלך), ומחליף את כל מה שקיים כרגע במכשיר זה. יש לשלוח את הקובץ
-      המיוצא למכשיר האחר בכל דרך נוחה (AirDrop, אימייל, Files/iCloud), ואז
-      לפתוח אותו משם דרך כפתור הייבוא.
+      לתוך קובץ אחד. <strong>ייבוא</strong> טוען את הקובץ הזה במכשיר אחר,
+      ומחליף את כל מה שקיים כרגע במכשיר זה.
+    </div>
+
+    <div class="drive-box">
+      <div class="drive-title">Google Drive <span id="driveState" class="drive-state"></span></div>
+      <div class="transfer-row">
+        <button class="btn secondary" id="btnDriveExport">ייצוא ל-Drive</button>
+      </div>
+      <div class="transfer-row">
+        <button class="btn secondary" id="btnDrivePush">שמירת השיעורים והשירים ב-Drive</button>
+      </div>
+      <div class="transfer-row">
+        <button class="btn secondary" id="btnDrivePull">טעינה מ-Drive</button>
+      </div>
+      <div class="drive-progress" id="driveProgress"></div>
+      <div class="transfer-note">
+        <strong>ייצוא ל-Drive</strong> מעלה קובץ גיבוי אחד עם תאריך.
+        <strong>שמירה ב-Drive</strong> מעדכנת את מסד הנתונים שלך בתיקייה: קובץ שיעורים
+        אחד וקובץ נפרד לכל שיר. <strong>טעינה</strong> מחליפה את מה שיש במכשיר
+        במה ששמור ב-Drive.
+      </div>
+      <details class="drive-settings" id="driveSettings">
+        <summary>הגדרות Google Drive</summary>
+        <label class="field-label">Client ID של Google</label>
+        <input type="text" id="driveClientId" dir="ltr" class="drive-input" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <label class="field-label">שם התיקייה ב-Drive</label>
+        <input type="text" id="driveFolderName" class="drive-input" placeholder="Weekly Lesson Plan">
+        <label class="drive-check"><input type="checkbox" id="driveAuto"> שמירה אוטומטית ל-Drive אחרי כל שמירת שיעור (כשיש חיבור פעיל)</label>
+        <div class="transfer-row">
+          <button class="btn" id="btnDriveSaveCfg">שמירת הגדרות</button>
+          <button class="btn secondary" id="btnDriveSignOut">ניתוק</button>
+        </div>
+        <div class="transfer-note">
+          כדי לחבר את Drive פעם אחת: ב-<strong>console.cloud.google.com</strong> יוצרים
+          פרויקט, מפעילים <strong>Google Drive API</strong>, ויוצרים
+          <strong>OAuth client ID</strong> מסוג Web application. בשדה
+          <strong>Authorized JavaScript origins</strong> מוסיפים את כתובת האפליקציה
+          (למשל <span dir="ltr">https://yourname.github.io</span>, בלי נתיב). ב-OAuth consent
+          screen מוסיפים את החשבון שלך כ-Test user. את ה-Client ID מדביקים כאן.
+          האפליקציה רואה רק קבצים שהיא עצמה יצרה (הרשאת drive.file).
+        </div>
+      </details>
     </div>
   </div>
 </div>
@@ -853,6 +902,7 @@
         getAllTemplates(function(t){
           templates = t;
           then && then();
+          if(typeof scheduleAutoBackup === "function") scheduleAutoBackup();
         });
       });
     });
@@ -1877,7 +1927,7 @@
   function applyLockedUi(){
     document.body.classList.toggle("locked", locked);
     var btn = document.getElementById("btnReady");
-    btn.textContent = locked ? "מצב מוכן" : "עריכה";
+    btn.textContent = locked ? "מצב מוכן" : "מצב עריכה";
   }
 
   function setLocked(val){
@@ -2045,6 +2095,17 @@
         showToast("הקובץ הזה אינו קובץ ייצוא תקין");
         return;
       }
+      importPayload(payload);
+    };
+    reader.readAsText(file);
+  };
+
+  // Replaces everything on this device with the content of an export
+  // payload (from a file or from Google Drive). Songs may carry either
+  // a dataUrl (file export) or a ready Blob (Drive).
+  function importPayload(payload, onDone){
+      var hasNewLessons = Array.isArray(payload && payload.dayLessons);
+      var hasOldLessons = Array.isArray(payload && payload.lessons);
       var payloadTemplates = Array.isArray(payload.templates) ? payload.templates : []; // older exports won't have this
 
       // Convert an older (hour-based) export into named day-lessons, the
@@ -2070,7 +2131,7 @@
           clearStore("templates", function(){
           clearDayLessonsStore(function(){
           Promise.all(payload.songs.map(function(s){
-            return dataUrlToBlob(s.dataUrl).then(function(blob){
+            return (s.blob ? Promise.resolve(s.blob) : dataUrlToBlob(s.dataUrl)).then(function(blob){
               if(!blob.type || blob.type.indexOf("audio/") !== 0){
                 blob = new Blob([blob], { type: guessAudioType(s.name) });
               }
@@ -2102,24 +2163,355 @@
             var st = payload.settings || {};
             locked = !!st.locked;
             applyLockedUi();
-            saveSettings({ locked: locked, migratedToNamedLessons: true }, function(){
-              refreshAll(function(){
-                renderDayNav();
-                renderSlotList();
-                closeTransferSheet();
-                showToast("הייבוא הושלם");
+            getSettings(function(existing){
+              // keep the Google Drive configuration - it belongs to this device
+              saveSettings(mergeSettings(existing, { locked: locked, migratedToNamedLessons: true }), function(){
+                refreshAll(function(){
+                  renderDayNav();
+                  renderSlotList();
+                  closeTransferSheet();
+                  showToast("הייבוא הושלם");
+                  if(onDone) onDone();
+                });
               });
             });
           }).catch(function(err){
             console.error("Import failed", err);
             showToast("הייבוא נכשל - יש לבדוק את הקונסולה");
+            if(onDone) onDone(err || new Error("import failed"));
           });
           });
           });
         });
       });
-    };
-    reader.readAsText(file);
+  }
+
+  // ---------------------------------------------------------------
+  // Google Drive - export + shared database (lessons + songs)
+  // Uses Google Identity Services (token flow) and the Drive REST API
+  // directly from the page. Needs the person's own OAuth Client ID.
+  // Scope drive.file: the app only ever sees files it created itself.
+  // ---------------------------------------------------------------
+  var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+  var DEFAULT_FOLDER = "Weekly Lesson Plan";
+  var DB_FILE = "lessons.json";
+  var driveCfg = { clientId: "", folderName: DEFAULT_FOLDER, autoBackup: false, lastSync: 0, consented: false };
+  var driveToken = null, driveTokenExp = 0, gisPromise = null, driveBusy = false, autoTimer = null, skipAuto = false;
+
+  function driveTokenValid(){ return !!driveToken && Date.now() < driveTokenExp; }
+  function driveFolderName(){ return (driveCfg.folderName || "").trim() || DEFAULT_FOLDER; }
+
+  function updateDriveStatus(){
+    var el = document.getElementById("driveState");
+    if(!el) return;
+    if(!driveCfg.clientId){ el.textContent = "(לא הוגדר)"; el.className = "drive-state"; }
+    else if(driveTokenValid()){ el.textContent = "● מחובר"; el.className = "drive-state on"; }
+    else { el.textContent = "(לא מחובר)"; el.className = "drive-state"; }
+  }
+  function setDriveProgress(msg){ document.getElementById("driveProgress").textContent = msg || ""; }
+  function setDriveButtons(disabled){
+    ["btnDriveExport","btnDrivePush","btnDrivePull"].forEach(function(id){ document.getElementById(id).disabled = disabled; });
+  }
+
+  function loadDriveConfig(cb){
+    getSettings(function(st){
+      var d = (st && st.drive) || {};
+      driveCfg.clientId = d.clientId || "";
+      driveCfg.folderName = d.folderName || DEFAULT_FOLDER;
+      driveCfg.autoBackup = !!d.autoBackup;
+      driveCfg.lastSync = d.lastSync || 0;
+      driveCfg.consented = !!d.consented;
+      document.getElementById("driveClientId").value = driveCfg.clientId;
+      document.getElementById("driveFolderName").value = driveCfg.folderName;
+      document.getElementById("driveAuto").checked = driveCfg.autoBackup;
+      document.getElementById("driveSettings").open = !driveCfg.clientId;
+      updateDriveStatus();
+      cb && cb();
+    });
+  }
+  function saveDriveConfig(cb){
+    getSettings(function(st){
+      saveSettings(mergeSettings(st, { drive: {
+        clientId: driveCfg.clientId, folderName: driveCfg.folderName,
+        autoBackup: driveCfg.autoBackup, lastSync: driveCfg.lastSync, consented: driveCfg.consented
+      } }), function(){ cb && cb(); });
+    });
+  }
+
+  function loadGis(){
+    if(window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+    if(gisPromise) return gisPromise;
+    gisPromise = new Promise(function(resolve, reject){
+      var sc = document.createElement("script");
+      sc.src = "https://accounts.google.com/gsi/client";
+      sc.async = true;
+      sc.onload = function(){ resolve(); };
+      sc.onerror = function(){ gisPromise = null; reject(new Error("offline")); };
+      document.head.appendChild(sc);
+    });
+    return gisPromise;
+  }
+
+  // interactive=true must be called straight from a tap (opens Google's sign-in popup)
+  function driveAuth(interactive){
+    if(driveTokenValid()) return Promise.resolve(driveToken);
+    if(!interactive) return Promise.reject(new Error("noauth"));
+    if(!driveCfg.clientId) return Promise.reject(new Error("noclient"));
+    if(!(window.google && google.accounts && google.accounts.oauth2)){
+      // not loaded yet - start loading so the next tap works, popups need a direct tap
+      loadGis();
+      return Promise.reject(new Error("gis-loading"));
+    }
+    return new Promise(function(resolve, reject){
+      var tc = google.accounts.oauth2.initTokenClient({
+        client_id: driveCfg.clientId,
+        scope: DRIVE_SCOPE,
+        callback: function(r){
+          if(r && r.access_token){
+            driveToken = r.access_token;
+            driveTokenExp = Date.now() + Math.max(60, (r.expires_in || 3600) - 60) * 1000;
+            if(!driveCfg.consented){ driveCfg.consented = true; saveDriveConfig(); }
+            updateDriveStatus();
+            resolve(driveToken);
+          } else {
+            reject(new Error((r && r.error) || "auth"));
+          }
+        },
+        error_callback: function(e){ reject(new Error((e && e.type) || "popup")); }
+      });
+      tc.requestAccessToken({ prompt: driveCfg.consented ? "" : "consent" });
+    });
+  }
+
+  function driveFetch(url, opts){
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + driveToken;
+    return fetch(url, opts).then(function(res){
+      if(res.status === 401){ driveToken = null; updateDriveStatus(); throw new Error("expired"); }
+      if(!res.ok){
+        return res.text().then(function(t){ throw new Error("drive " + res.status + " " + t.slice(0, 200)); });
+      }
+      return res;
+    });
+  }
+  function qEsc(v){ return String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'"); }
+
+  function driveFindOrCreateFolder(){
+    var q = "mimeType='application/vnd.google-apps.folder' and name='" + qEsc(driveFolderName()) + "' and trashed=false";
+    return driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id,name)&q=" + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(j.files && j.files.length) return j.files[0].id;
+        return driveFetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: driveFolderName(), mimeType: "application/vnd.google-apps.folder" })
+        }).then(function(r){ return r.json(); }).then(function(f){ return f.id; });
+      });
+  }
+  function driveListFolder(folderId){
+    var q = "'" + qEsc(folderId) + "' in parents and trashed=false";
+    return driveFetch("https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(id,name,modifiedTime)&q=" + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var map = {};
+        (j.files || []).forEach(function(f){ map[f.name] = f; });
+        return map;
+      });
+  }
+  function driveUpload(folderId, name, blob, type, existingId){
+    if(existingId){
+      return driveFetch("https://www.googleapis.com/upload/drive/v3/files/" + existingId + "?uploadType=media&fields=id", {
+        method: "PATCH", headers: { "Content-Type": type }, body: blob
+      }).then(function(r){ return r.json(); });
+    }
+    var boundary = "lp" + Math.random().toString(36).slice(2);
+    var body = new Blob([
+      "--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n",
+      JSON.stringify({ name: name, parents: [folderId] }),
+      "\r\n--" + boundary + "\r\nContent-Type: " + type + "\r\n\r\n",
+      blob,
+      "\r\n--" + boundary + "--"
+    ]);
+    return driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
+      method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + boundary }, body: body
+    }).then(function(r){ return r.json(); });
+  }
+  function driveDownload(fileId){
+    return driveFetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media");
+  }
+
+  function songFileName(s){ return "song-" + s.id + ".mp3"; }
+
+  function driveErrorToast(err){
+    var m = err && err.message || "";
+    console.warn("Drive error", err);
+    if(m === "noclient"){ showToast("יש להגדיר קודם Client ID בהגדרות Google Drive"); document.getElementById("driveSettings").open = true; }
+    else if(m === "gis-loading"){ showToast("טוען את חיבור Google - יש ללחוץ שוב בעוד רגע"); }
+    else if(m === "offline" || !navigator.onLine){ showToast("אין חיבור לאינטרנט"); }
+    else if(m === "expired" || m === "noauth"){ showToast("החיבור ל-Drive פג - יש להתחבר שוב"); }
+    else if(/popup|access_denied|user_cancel|popup_closed/i.test(m)){ showToast("ההתחברות ל-Google בוטלה"); }
+    else { showToast("הפעולה מול Drive נכשלה"); }
+  }
+
+  // one run of a Drive action: sign in (from the tap), do the work, report
+  function runDrive(label, work){
+    if(driveBusy) return;
+    if(!driveCfg.clientId){ driveErrorToast(new Error("noclient")); return; }
+    driveBusy = true; setDriveButtons(true);
+    setDriveProgress(label + "…");
+    driveAuth(true).then(work).then(function(msg){
+      setDriveProgress("");
+      if(msg) showToast(msg);
+    }).catch(function(err){
+      setDriveProgress("");
+      driveErrorToast(err);
+    }).then(function(){
+      driveBusy = false; setDriveButtons(false);
+    });
+  }
+
+  function buildExportPayload(){
+    return new Promise(function(resolve){
+      getAllDayLessons(function(allDayLessons){
+        getAllSongs(function(allSongs){
+          getAllTemplates(function(allTemplates){
+            resolve({ allDayLessons: allDayLessons, allSongs: allSongs, allTemplates: allTemplates });
+          });
+        });
+      });
+    });
+  }
+
+  // Export: one dated, self-contained backup file (same format as "ייצוא קובץ")
+  function driveExportSnapshot(){
+    return buildExportPayload().then(function(d){
+      setDriveProgress("מכין קובץ גיבוי…");
+      return Promise.all(d.allSongs.map(function(s){
+        return blobToDataUrl(s.blob).then(function(u){ return { id: s.id, name: s.name, added: s.added, dataUrl: u }; });
+      })).then(function(songsOut){
+        var payload = { app: "lesson-planner", version: 2, exportedAt: Date.now(), settings: { locked: locked },
+          dayLessons: d.allDayLessons, songs: songsOut, templates: d.allTemplates };
+        var blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+        var name = "lesson-plan-" + new Date().toISOString().slice(0, 10) + ".json";
+        setDriveProgress("מעלה ל-Drive…");
+        return driveFindOrCreateFolder().then(function(folderId){
+          return driveListFolder(folderId).then(function(files){
+            return driveUpload(folderId, name, blob, "application/json", files[name] && files[name].id);
+          });
+        });
+      });
+    }).then(function(){ return "הגיבוי נשמר ב-Drive, בתיקייה \"" + driveFolderName() + "\""; });
+  }
+
+  // Database push: lessons.json + one file per song (only songs not already there)
+  function drivePush(){
+    return driveFindOrCreateFolder().then(function(folderId){
+      return driveListFolder(folderId).then(function(files){
+        var remote = files[DB_FILE];
+        var newer = remote && driveCfg.lastSync && (Date.parse(remote.modifiedTime) > driveCfg.lastSync + 5000);
+        if(newer && !confirm("ב-Drive יש גרסה חדשה יותר (כנראה ממכשיר אחר).\nלהחליף אותה בגרסה שבמכשיר זה?")){
+          return "בוטל";
+        }
+        return buildExportPayload().then(function(d){
+          var toUpload = d.allSongs.filter(function(s){ return !files[songFileName(s)]; });
+          var chain = Promise.resolve();
+          toUpload.forEach(function(s, i){
+            chain = chain.then(function(){
+              setDriveProgress("מעלה שיר " + (i + 1) + " מתוך " + toUpload.length + "…");
+              return driveUpload(folderId, songFileName(s), s.blob, "audio/mpeg");
+            });
+          });
+          return chain.then(function(){
+            var payload = {
+              app: "lesson-planner", version: 2, exportedAt: Date.now(),
+              settings: { locked: locked },
+              dayLessons: d.allDayLessons, templates: d.allTemplates,
+              songs: d.allSongs.map(function(s){ return { id: s.id, name: s.name, added: s.added, file: songFileName(s) }; })
+            };
+            setDriveProgress("שומר שיעורים…");
+            return driveUpload(folderId, DB_FILE, new Blob([JSON.stringify(payload)], { type: "application/json" }),
+              "application/json", remote && remote.id);
+          }).then(function(){
+            driveCfg.lastSync = Date.now(); saveDriveConfig();
+            return "נשמר ב-Drive";
+          });
+        });
+      });
+    });
+  }
+
+  // Database pull: replaces this device's lessons, library and songs
+  function drivePull(){
+    return driveFindOrCreateFolder().then(function(folderId){
+      return driveListFolder(folderId).then(function(files){
+        var remote = files[DB_FILE];
+        if(!remote) return "לא נמצא מסד נתונים ב-Drive. יש לשמור קודם ממכשיר אחר.";
+        if(!confirm("לטעון מ-Drive?\n\nפעולה זו מחליפה את כל השיעורים, השירים וההגדרות שבמכשיר זה במה ששמור ב-Drive.")) return "בוטל";
+        setDriveProgress("מוריד שיעורים…");
+        return driveDownload(remote.id).then(function(r){ return r.json(); }).then(function(payload){
+          if(!payload || payload.app !== "lesson-planner" || !Array.isArray(payload.songs)) throw new Error("bad db");
+          var songsIn = [];
+          var chain = Promise.resolve();
+          payload.songs.forEach(function(s, i){
+            chain = chain.then(function(){
+              var f = files[s.file];
+              if(!f) return; // song file missing on Drive - skip it
+              setDriveProgress("מוריד שיר " + (i + 1) + " מתוך " + payload.songs.length + "…");
+              return driveDownload(f.id).then(function(r){ return r.blob(); }).then(function(blob){
+                songsIn.push({ id: s.id, name: s.name, added: s.added, blob: blob });
+              });
+            });
+          });
+          return chain.then(function(){
+            payload.songs = songsIn;
+            skipAuto = true;
+            return new Promise(function(resolve, reject){
+              importPayload(payload, function(err){ skipAuto = false; err ? reject(err) : resolve(); });
+            });
+          }).then(function(){
+            driveCfg.lastSync = Date.now(); saveDriveConfig();
+            return "נטען מ-Drive";
+          });
+        });
+      });
+    });
+  }
+
+  // optional: save to Drive a few seconds after changes, while a connection is active
+  function scheduleAutoBackup(){
+    if(skipAuto || !driveCfg.autoBackup || !driveCfg.clientId || !driveTokenValid() || driveBusy) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function(){
+      if(driveBusy || !driveTokenValid()) return;
+      driveBusy = true; setDriveButtons(true);
+      drivePush().then(function(msg){ if(msg === "נשמר ב-Drive") showToast("נשמר גם ב-Drive"); })
+        .catch(function(err){ console.warn("Auto Drive save failed", err); })
+        .then(function(){ driveBusy = false; setDriveButtons(false); setDriveProgress(""); });
+    }, 4000);
+  }
+
+  document.getElementById("btnDriveExport").onclick = function(){ runDrive("מייצא", driveExportSnapshot); };
+  document.getElementById("btnDrivePush").onclick = function(){ runDrive("שומר", drivePush); };
+  document.getElementById("btnDrivePull").onclick = function(){ runDrive("טוען", drivePull); };
+  document.getElementById("btnDriveSaveCfg").onclick = function(){
+    driveCfg.clientId = document.getElementById("driveClientId").value.trim();
+    driveCfg.folderName = document.getElementById("driveFolderName").value.trim() || DEFAULT_FOLDER;
+    driveCfg.autoBackup = document.getElementById("driveAuto").checked;
+    driveToken = null; driveTokenExp = 0;
+    saveDriveConfig(function(){
+      updateDriveStatus();
+      if(driveCfg.clientId) loadGis().catch(function(){});
+      showToast("ההגדרות נשמרו");
+    });
+  };
+  document.getElementById("btnDriveSignOut").onclick = function(){
+    var t = driveToken;
+    driveToken = null; driveTokenExp = 0;
+    if(t && window.google && google.accounts && google.accounts.oauth2){ try{ google.accounts.oauth2.revoke(t, function(){}); }catch(e){} }
+    driveCfg.consented = false;
+    saveDriveConfig(function(){ updateDriveStatus(); showToast("נותק מ-Google Drive"); });
   };
 
   // ---------------------------------------------------------------
@@ -2158,6 +2550,7 @@
   // Init
   // ---------------------------------------------------------------
   openDb(function(){
+    loadDriveConfig(function(){ if(driveCfg.clientId && navigator.onLine) loadGis().catch(function(){}); });
     migrateHourLessonsIfNeeded(function(){
       getSettings(function(s){
         locked = !!(s && s.locked);
