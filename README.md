@@ -59,8 +59,15 @@ that, you can turn on Airplane Mode and it keeps working completely.
 - Reordering activities: when a lesson has more than one activity, each has a
   drag handle (⋮⋮) on its right. Press and drag it up or down to change the
   order; the numbers update by themselves.
-- To remove a lesson, either open it and tap **Delete lesson**, or tap the
-  small ✕ directly on its card in the day's list.
+- Deleting a lesson (the ✕ on its card, or **מחיקת שיעור** inside it) asks
+  what you mean: **הסרה מהיום בלבד** takes it off that day but keeps it in
+  "השיעורים השמורים" and on Drive; **מחיקה לצמיתות** removes it from every
+  day, from the saved lessons and from Drive (and, on the next sync, from
+  your other devices). Deleting from the saved-lessons list is always
+  permanent.
+- When you name a new lesson, the app checks the name on this device and on
+  Drive. If it already exists as a saved lesson you are offered to load it
+  into the new lesson, or to pick another name.
 - **Add new MP3**: pick an audio file from your phone (e.g. from Files, or
   something you've already downloaded) — it's saved permanently inside
   the app from then on, so you never need to add that same song twice.

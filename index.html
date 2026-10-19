@@ -396,6 +396,13 @@
   body.locked #sheet .sheet-scroll{ flex:1; }
 
   .transfer-row{ display:flex; gap:10px; margin-top:8px; }
+  .modal-back{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:300; padding:16px; }
+  .modal-back.open{ display:flex; }
+  .modal{ background:var(--paper-raised); border-radius:14px; padding:18px; width:100%; max-width:340px; display:flex; flex-direction:column; gap:10px; }
+  .modal-title{ font-weight:700; font-size:15px; }
+  .modal .btn{ flex-direction:column; gap:2px; text-align:center; }
+  .modal .btn .sub{ display:block; font-size:11.5px; font-weight:400; color:var(--ink-soft); }
+  .btn.danger{ background:var(--paper); color:var(--danger); border:1px solid var(--danger); }
   .drive-box{ margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
   .drive-box.first{ margin-top:0; padding-top:0; border-top:none; }
   .drive-settings.advanced{ margin-top:18px; padding-top:10px; border-top:1px solid var(--line); }
@@ -573,7 +580,7 @@
         <input type="text" id="driveClientId" dir="ltr" class="drive-input" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false">
         <label class="field-label">שם התיקייה ב-Drive</label>
         <input type="text" id="driveFolderName" class="drive-input" placeholder="Weekly Lesson Plan">
-        <label class="drive-check"><input type="checkbox" id="driveAuto"> לשמור כל שיעור גם ב-Drive בלחיצה על "שמירה" (תיפתח התחברות ל-Google אם פג תוקפה)</label>
+        <label class="drive-check"><input type="checkbox" id="driveAuto"> לעדכן את Drive אוטומטית בכל שמירה, הסרה ומחיקה של שיעור (תיפתח התחברות ל-Google אם פג תוקפה)</label>
         <div class="transfer-row">
           <button class="btn primary" id="btnDriveSaveCfg">שמירת הגדרות</button>
           <button class="btn secondary" id="btnDriveSignOut">ניתוק</button>
@@ -607,6 +614,15 @@
 <input type="file" id="fileInput" accept="audio/mpeg,audio/mp3,.mp3">
 <input type="file" id="libraryFileInput" accept="audio/mpeg,audio/mp3,.mp3" multiple>
 <input type="file" id="importFileInput" accept="application/json,.json">
+
+<div class="modal-back" id="delChoice">
+  <div class="modal">
+    <div class="modal-title" id="delTitle"></div>
+    <button class="btn secondary" id="delDay">הסרה מהיום בלבד<span class="sub">השיעור יישאר ב"שיעורים השמורים" וב-Drive</span></button>
+    <button class="btn danger" id="delForever">מחיקה לצמיתות<span class="sub">יימחק מכל הימים, מהספרייה וגם מ-Drive</span></button>
+    <button class="btn secondary" id="delCancel">ביטול</button>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1088,16 +1104,10 @@
       }; }(lesson.id);
       var quickDelete = el.querySelector('[data-role="quick-delete"]');
       if(quickDelete){
-        quickDelete.onclick = function(id, name, hasContent){ return function(e){
+        quickDelete.onclick = function(lessonRec){ return function(e){
           e.stopPropagation();
-          var msg = hasContent
-            ? 'למחוק את "' + name + '"? לא ניתן לבטל פעולה זו.'
-            : 'למחוק את "' + name + '"?';
-          if(!confirm(msg)) return;
-          deleteDayLesson(id, function(){
-            refreshAll(function(){ renderDayNav(); renderSlotList(); showToast("השיעור נמחק"); });
-          });
-        }; }(lesson.id, lesson.name, items.length > 0);
+          askDeleteChoice(lessonRec);
+        }; }(lesson);
       }
       main.appendChild(el);
     });
@@ -1239,12 +1249,52 @@
       return; // stays on the naming step
     }
 
-    currentLessonName = name;
-    nameInput.value = name;
-    document.getElementById("sheetTitle").textContent = name;
-    showLessonBody();
-    var firstTextarea = document.querySelector("#itemsList .item-text");
-    if(firstTextarea) firstTextarea.focus();
+    var contBtn = document.getElementById("btnNameContinue");
+    function proceed(items){
+      currentLessonName = name;
+      nameInput.value = name;
+      document.getElementById("sheetTitle").textContent = name;
+      if(items){
+        currentItems = items.map(cloneItem);
+        if(currentItems.length === 0) currentItems.push({ text: "", songId: null, subs: [] });
+        renderItemsList();
+      }
+      showLessonBody();
+      var firstTextarea = document.querySelector("#itemsList .item-text");
+      if(firstTextarea) firstTextarea.focus();
+    }
+
+    // The name is also the file name on Drive: check it there too. The
+    // sign-in popup has to start inside this tap, so it starts right here.
+    var useDrive = !!driveCfg.clientId;
+    var authP = useDrive ? driveAuth(true).then(function(){ return true; }, function(){ return false; }) : Promise.resolve(false);
+    contBtn.disabled = true;
+    if(useDrive) showToast("בודק אם השם קיים ב-Drive…");
+    authP.then(function(ok){
+      if(!ok) return { checked: false };
+      return driveCheckLesson(name).then(function(r){ return { checked: true, files: r.files, f: r.f }; });
+    }).catch(function(e){ console.warn("Drive name check", e); return { checked: false }; }).then(function(res){
+      contBtn.disabled = false;
+      var local = localTemplate(name);
+      var remoteHit = res.checked && res.f;
+      if(useDrive && !res.checked) showToast("לא ניתן היה לבדוק ב-Drive - השם נבדק רק במכשיר");
+      if(!local && !remoteHit){ proceed(null); return; }
+      var where = remoteHit ? "ב-Drive" : 'ב"שיעורים השמורים"';
+      if(!confirm('שיעור בשם "' + name + '" כבר קיים ' + where + '.\n\nאישור - לטעון אותו ליום הזה.\nביטול - לבחור שם אחר.')){
+        nameInput.focus(); nameInput.select();
+        return;
+      }
+      var load = Promise.resolve();
+      if(remoteHit){
+        load = driveDownload(res.f.id).then(function(r){ return r.json(); }).then(function(o){
+          if(!local || (o.updated || 0) > tplStamp(local)) return applyRemoteLesson(o, res.files);
+        });
+      }
+      load.catch(function(e){ console.warn("load existing", e); }).then(function(){
+        var t = localTemplate(name);
+        proceed(t ? t.items : null);
+      });
+    });
   };
 
   document.getElementById("btnAddLesson").onclick = function(){
@@ -1604,13 +1654,10 @@
       };
       item.querySelector(".reuse-delete").onclick = function(e){
         e.stopPropagation();
-        if(!confirm('למחוק את "' + tpl.name + '" מהספרייה שלך? לא ניתן לבטל פעולה זו.')) return;
-        if(typeof driveNoteDeleted === "function") driveNoteDeleted(tpl.name);
-        deleteTemplate(tpl.id, function(){
-          refreshAll(function(){
-            renderTemplateList();
-            showToast("נמחק מהספרייה שלך");
-          });
+        if(!confirm('למחוק את "' + tpl.name + '" לצמיתות?\n\nהוא יימחק מ"השיעורים השמורים", מכל הימים וגם מ-Drive. לא ניתן לבטל פעולה זו.')) return;
+        deleteLessonEverywhere(tpl.name, driveAuthIfEnabled(), function(){
+          renderTemplateList();
+          showToast("נמחק לצמיתות");
         });
       };
       list.appendChild(item);
@@ -1695,6 +1742,7 @@
 
     // Google Drive: the sign-in popup has to start inside this tap, so it is
     // started here (instantly resolved if a connection is already active)
+    var oldNameForDrive = existingForOrder ? (existingForOrder.name || "").trim() : null;
     var drivePromise = (driveCfg.autoBackup && driveCfg.clientId)
       ? driveAuth(true).then(function(){ return true; }, function(e){ console.warn("Drive sign-in", e); return false; })
       : null;
@@ -1707,7 +1755,7 @@
             showToast("נשמר במכשיר, שומר ב-Drive…");
             drivePromise.then(function(ok){
               if(!ok){ showToast("נשמר במכשיר. ההתחברות ל-Drive לא הושלמה"); return; }
-              return driveSaveLesson(finalName).then(function(){ showToast("נשמר גם ב-Drive"); });
+              return driveSaveLesson(finalName, oldNameForDrive).then(function(){ showToast("נשמר גם ב-Drive"); });
             }).catch(function(err){ console.warn("Drive save failed", err); showToast("נשמר במכשיר, אך השמירה ב-Drive נכשלה"); });
           } else {
             showToast("נשמר");
@@ -1723,8 +1771,9 @@
 
   document.getElementById("btnClear").onclick = function(){
     if(currentLessonId === null){ closeSheet(); return; }
-    if(!confirm('למחוק את "' + currentLessonName + '"? לא ניתן לבטל פעולה זו.')) return;
-    deleteDayLesson(currentLessonId, function(){ refreshAll(function(){ renderDayNav(); renderSlotList(); closeSheet(); showToast("השיעור נמחק"); }); });
+    var rec = dayLessons.filter(function(l){ return l.id === currentLessonId; })[0];
+    if(!rec){ closeSheet(); return; }
+    askDeleteChoice(rec, function(){ closeSheet(); });
   };
 
   // ---------------------------------------------------------------
@@ -1940,13 +1989,10 @@
         });
       };
       row.querySelector(".icon-btn.ghost").onclick = function(){
-        if(!confirm('למחוק את "' + tpl.name + '" מהספרייה שלך? לא ניתן לבטל פעולה זו.')) return;
-        if(typeof driveNoteDeleted === "function") driveNoteDeleted(tpl.name);
-        deleteTemplate(tpl.id, function(){
-          refreshAll(function(){
-            renderTemplatesLibraryList();
-            showToast("נמחק מהספרייה שלך");
-          });
+        if(!confirm('למחוק את "' + tpl.name + '" לצמיתות?\n\nהוא יימחק מ"השיעורים השמורים", מכל הימים וגם מ-Drive. לא ניתן לבטל פעולה זו.')) return;
+        deleteLessonEverywhere(tpl.name, driveAuthIfEnabled(), function(){
+          renderTemplatesLibraryList();
+          showToast("נמחק לצמיתות");
         });
       };
 
@@ -2274,8 +2320,8 @@
   var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
   var DEFAULT_FOLDER = "Weekly Lesson Plan";
   var DB_FILE = "lessons.json";
-  var driveCfg = { clientId: "", folderName: DEFAULT_FOLDER, autoBackup: false, lastSync: 0, consented: false, tombstones: {}, planSig: "", planUpdated: 0 };
-  var driveToken = null, driveTokenExp = 0, gisPromise = null, driveBusy = false, autoTimer = null, skipAuto = false;
+  var driveCfg = { clientId: "", folderName: DEFAULT_FOLDER, autoBackup: true, lastSync: 0, consented: false, tombstones: {}, lastPlan: {}, known: {} };
+  var driveDetail = "", driveToken = null, driveTokenExp = 0, gisPromise = null, driveBusy = false, autoTimer = null, skipAuto = false;
 
   function driveTokenValid(){ return !!driveToken && Date.now() < driveTokenExp; }
   function driveFolderName(){ return (driveCfg.folderName || "").trim() || DEFAULT_FOLDER; }
@@ -2299,12 +2345,12 @@
       var d = (st && st.drive) || {};
       driveCfg.clientId = d.clientId || "";
       driveCfg.folderName = d.folderName || DEFAULT_FOLDER;
-      driveCfg.autoBackup = !!d.autoBackup;
+      driveCfg.autoBackup = d.autoBackup === undefined ? true : !!d.autoBackup;
       driveCfg.lastSync = d.lastSync || 0;
       driveCfg.consented = !!d.consented;
       driveCfg.tombstones = d.tombstones || {};
-      driveCfg.planSig = d.planSig || "";
-      driveCfg.planUpdated = d.planUpdated || 0;
+      driveCfg.lastPlan = d.lastPlan || {};
+      driveCfg.known = d.known || {};
       document.getElementById("driveClientId").value = driveCfg.clientId;
       document.getElementById("driveFolderName").value = driveCfg.folderName;
       document.getElementById("driveAuto").checked = driveCfg.autoBackup;
@@ -2318,7 +2364,7 @@
       saveSettings(mergeSettings(st, { drive: {
         clientId: driveCfg.clientId, folderName: driveCfg.folderName,
         autoBackup: driveCfg.autoBackup, lastSync: driveCfg.lastSync, consented: driveCfg.consented,
-        tombstones: driveCfg.tombstones, planSig: driveCfg.planSig, planUpdated: driveCfg.planUpdated
+        tombstones: driveCfg.tombstones, lastPlan: driveCfg.lastPlan, known: driveCfg.known
       } }), function(){ cb && cb(); });
     });
   }
@@ -2383,19 +2429,41 @@
   function qEsc(v){ return String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'"); }
 
   function driveRootFolder(){ return driveFindOrCreateFolder(driveFolderName(), null); }
-  function driveFindOrCreateFolder(folderName, parentId){
+  // all folders with this name (oldest first, so every device agrees which is "main")
+  function driveFindFolders(folderName, parentId){
     var q = "mimeType='application/vnd.google-apps.folder' and name='" + qEsc(folderName) + "' and trashed=false" +
       (parentId ? " and '" + qEsc(parentId) + "' in parents" : "");
-    return driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id,name)&q=" + encodeURIComponent(q))
+    return driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&orderBy=createdTime&fields=files(id,name)&q=" + encodeURIComponent(q))
       .then(function(r){ return r.json(); })
-      .then(function(j){
-        if(j.files && j.files.length) return j.files[0].id;
-        return driveFetch("https://www.googleapis.com/drive/v3/files?fields=id", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: folderName, mimeType: "application/vnd.google-apps.folder", parents: parentId ? [parentId] : undefined })
-        }).then(function(r){ return r.json(); }).then(function(f){ return f.id; });
+      .then(function(j){ return (j.files || []).map(function(f){ return f.id; }); });
+  }
+  function driveFindOrCreateFolder(folderName, parentId){
+    return driveFindFolders(folderName, parentId).then(function(ids){
+      if(ids.length) return ids[0];
+      return driveFetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: folderName, mimeType: "application/vnd.google-apps.folder", parents: parentId ? [parentId] : undefined })
+      }).then(function(r){ return r.json(); }).then(function(f){ return f.id; });
+    });
+  }
+  function driveRootFolderIds(){
+    return driveFindFolders(driveFolderName(), null).then(function(ids){
+      if(ids.length) return ids;
+      return driveRootFolder().then(function(id){ return [id]; });
+    });
+  }
+  // listing of several same-named folders merged into one (first folder wins on a name clash)
+  function driveListFolders(ids){
+    var merged = {}, chain = Promise.resolve();
+    ids.forEach(function(id){
+      chain = chain.then(function(){
+        return driveListFolder(id).then(function(m){
+          Object.keys(m).forEach(function(n){ if(!merged[n]) merged[n] = m[n]; });
+        });
       });
+    });
+    return chain.then(function(){ return merged; });
   }
   function driveListFolder(folderId){
     var q = "'" + qEsc(folderId) + "' in parents and trashed=false";
@@ -2455,8 +2523,9 @@
     if(!driveCfg.clientId){ driveErrorToast(new Error("noclient")); return; }
     driveBusy = true; setDriveButtons(true);
     setDriveProgress(label + "…");
+    driveDetail = "";
     driveAuth(true).then(work).then(function(msg){
-      setDriveProgress("");
+      setDriveProgress(driveDetail);   // what was found / skipped stays on screen
       if(msg) showToast(msg);
     }).catch(function(err){
       setDriveProgress("");
@@ -2563,54 +2632,162 @@
     return dayLessons.map(function(l){ return { day: l.day, name: (l.name || "").trim(), order: l.order || 0 }; })
       .sort(function(a, b){ return a.day - b.day || a.order - b.order || a.name.localeCompare(b.name); });
   }
-  function planStamp(){
-    var sig = JSON.stringify(localPlan());
-    if(sig !== driveCfg.planSig){ driveCfg.planSig = sig; driveCfg.planUpdated = Date.now(); saveDriveConfig(); }
-    return driveCfg.planUpdated || 0;
-  }
   function pushPlan(folderId, files){
-    var stamp = planStamp();
     return driveUpload(folderId, "week-plan.json",
-      new Blob([JSON.stringify({ app: "lesson-planner", type: "plan", updated: stamp, entries: localPlan() })], { type: "application/json" }),
-      "application/json", files["week-plan.json"] && files["week-plan.json"].id);
+      new Blob([JSON.stringify({ app: "lesson-planner", type: "plan", updated: Date.now(), entries: localPlan() })], { type: "application/json" }),
+      "application/json", files["week-plan.json"] && files["week-plan.json"].id)
+      .then(function(r){ files["week-plan.json"] = { id: r.id, name: "week-plan.json" }; });
+  }
+  // change only some entries of the plan on Drive (never touches the others)
+  function drivePlanApply(folderId, files, changes){
+    var plan = files["week-plan.json"];
+    var get = plan ? driveDownload(plan.id).then(function(r){ return r.json(); }).catch(function(){ return null; }) : Promise.resolve(null);
+    return get.then(function(rp){
+      var entries = (rp && Array.isArray(rp.entries)) ? rp.entries : [];
+      changes.forEach(function(c){
+        entries = entries.filter(function(e){ return (e.name || "").trim() !== c.name; });
+        if(c.info) entries.push({ day: c.info.day, name: c.name, order: c.info.order || 0 });
+      });
+      return driveUpload(folderId, "week-plan.json",
+        new Blob([JSON.stringify({ app: "lesson-planner", type: "plan", updated: Date.now(), entries: entries })], { type: "application/json" }),
+        "application/json", plan && plan.id)
+        .then(function(r){ files["week-plan.json"] = { id: r.id, name: "week-plan.json" }; });
+    }).then(function(){
+      driveCfg.lastPlan = driveCfg.lastPlan || {};
+      changes.forEach(function(c){ if(c.info) driveCfg.lastPlan[c.name] = c.info.day; else delete driveCfg.lastPlan[c.name]; });
+      saveDriveConfig();
+    });
+  }
+  function driveMarkKnown(name){
+    driveCfg.known = driveCfg.known || {};
+    driveCfg.known[name] = true;
+    saveDriveConfig();
   }
 
-  // ---- tombstones: a lesson deleted from the library is deleted from Drive too ----
+  // ---- tombstones: a lesson deleted for good is deleted from Drive too ----
   function driveClearTombstone(name){
     if(driveCfg.tombstones && driveCfg.tombstones[name]){ delete driveCfg.tombstones[name]; saveDriveConfig(); }
   }
-  function driveNoteDeleted(name){
+  // authP: sign-in started inside the tap that deleted the lesson (or null)
+  function driveNoteDeleted(name, authP){
     if(!driveCfg.clientId) return;
     name = (name || "").trim();
     driveCfg.tombstones = driveCfg.tombstones || {};
     driveCfg.tombstones[name] = Date.now();
+    if(driveCfg.known) delete driveCfg.known[name];
+    if(driveCfg.lastPlan) delete driveCfg.lastPlan[name];
     saveDriveConfig();
-    if(driveTokenValid()){
-      driveRootFolder().then(function(folderId){ return driveListFolder(folderId); }).then(function(files){
-        var f = files[lessonFileName(name)];
-        if(!f) { driveClearTombstone(name); return; }
-        return driveFetch("https://www.googleapis.com/drive/v3/files/" + f.id, {
-          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true })
-        }).then(function(){ driveClearTombstone(name); });
-      }).catch(function(e){ console.warn("Drive delete failed", e); });
-    }
+    var ready = authP ? authP : Promise.resolve(driveTokenValid());
+    ready.then(function(ok){
+      if(!ok){ showToast("נמחק במכשיר. יימחק מ-Drive בסנכרון הבא"); return; }
+      return driveRootFolderIds().then(function(ids){
+        return driveListFolders(ids).then(function(files){
+          var f = files[lessonFileName(name)];
+          var p = f ? driveFetch("https://www.googleapis.com/drive/v3/files/" + f.id, {
+            method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true })
+          }) : Promise.resolve();
+          return p.then(function(){ return drivePlanApply(ids[0], files, [{ name: name, info: null }]); });
+        });
+      }).then(function(){ driveClearTombstone(name); showToast("נמחק גם מ-Drive"); });
+    }).catch(function(e){ console.warn("Drive delete failed", e); showToast("נמחק במכשיר. יימחק מ-Drive בסנכרון הבא"); });
   }
 
-  // Save one lesson (and its songs) to Drive, then the week plan
-  function driveSaveLesson(name){
+  // Save one lesson (and its songs) to Drive and put it on its day in the Drive plan.
+  // oldName: the lesson's previous name when it was renamed (its day entry is removed).
+  function driveSaveLesson(name, oldName){
     var tpl = localTemplate(name);
-    if(!tpl) return Promise.resolve();
-    return driveRootFolder().then(function(folderId){
-      return driveListFolder(folderId).then(function(files){
-        return pushLessonFile(folderId, files, tpl).then(function(){ return pushPlan(folderId, files); });
+    return driveRootFolderIds().then(function(ids){
+      var folderId = ids[0];
+      return driveListFolders(ids).then(function(files){
+        var p = tpl ? pushLessonFile(folderId, files, tpl) : Promise.resolve();
+        return p.then(function(){
+          if(tpl) driveMarkKnown(name);
+          var dl = dayLessons.filter(function(l){ return (l.name || "").trim() === name; })[0];
+          var changes = [{ name: name, info: dl ? { day: dl.day, order: dl.order || 0 } : null }];
+          if(oldName && oldName !== name) changes.push({ name: oldName, info: null });
+          return drivePlanApply(folderId, files, changes);
+        });
       });
     });
+  }
+
+  // does a lesson with this name exist in the Drive folder?
+  function driveCheckLesson(name){
+    return driveRootFolderIds().then(function(ids){
+      return driveListFolders(ids).then(function(files){
+        return { files: files, f: files[lessonFileName(name)] || null };
+      });
+    });
+  }
+  function driveAuthIfEnabled(){
+    return (driveCfg.clientId && driveCfg.autoBackup)
+      ? driveAuth(true).then(function(){ return true; }, function(e){ console.warn("Drive sign-in", e); return false; })
+      : null;
+  }
+
+  // ---- the two kinds of deleting ----
+  function deleteLessonLocal(name){
+    name = (name || "").trim();
+    var chain = Promise.resolve();
+    dayLessons.filter(function(l){ return (l.name || "").trim() === name; }).forEach(function(l){
+      chain = chain.then(function(){ return new Promise(function(r){ deleteDayLesson(l.id, r); }); });
+    });
+    templates.filter(function(t){ return (t.name || "").trim() === name; }).forEach(function(t){
+      chain = chain.then(function(){ return new Promise(function(r){ deleteTemplate(t.id, r); }); });
+    });
+    return chain.then(refreshAllP);
+  }
+  // permanent: every day, the saved-lessons library and Drive
+  function deleteLessonEverywhere(name, authP, done){
+    deleteLessonLocal(name).then(function(){
+      driveNoteDeleted(name, authP);
+      renderDayNav(); renderSlotList();
+      done && done();
+    });
+  }
+  // only this day: the lesson stays in the library (and on Drive)
+  function removeLessonFromDay(lesson, authP, done){
+    var name = (lesson.name || "").trim();
+    var created = false;
+    var ensure = localTemplate(name) ? Promise.resolve() : (created = true, putRecord("templates", { name: name, items: lesson.items || [], added: Date.now(), updated: lesson.updated || Date.now() }));
+    ensure.then(function(){ return new Promise(function(r){ deleteDayLesson(lesson.id, r); }); })
+      .then(refreshAllP).then(function(){
+        renderDayNav(); renderSlotList();
+        done && done();
+        if(driveCfg.clientId){
+          var ready = authP ? authP : Promise.resolve(driveTokenValid());
+          ready.then(function(ok){
+            if(!ok){ showToast("הוסר מהיום. יתעדכן ב-Drive בסנכרון הבא"); return; }
+            return driveSaveLesson(name).then(function(){ showToast("הוסר מהיום גם ב-Drive"); });
+          }).catch(function(e){ console.warn(e); showToast("הוסר מהיום. יתעדכן ב-Drive בסנכרון הבא"); });
+        }
+      });
+  }
+  function askDeleteChoice(lesson, onDone){
+    var name = (lesson.name || "").trim();
+    var m = document.getElementById("delChoice");
+    document.getElementById("delTitle").textContent = 'מה למחוק? "' + name + '"';
+    document.getElementById("delDay").firstChild.textContent = "הסרה מיום " + DAYS[lesson.day] + " בלבד";
+    m.classList.add("open");
+    function close(){ m.classList.remove("open"); }
+    document.getElementById("delCancel").onclick = close;
+    document.getElementById("delDay").onclick = function(){
+      close();
+      removeLessonFromDay(lesson, driveAuthIfEnabled(), function(){ showToast("הוסר מהיום"); onDone && onDone(); });
+    };
+    document.getElementById("delForever").onclick = function(){
+      close();
+      if(!confirm('למחוק את "' + name + '" לצמיתות?\n\nהוא יימחק מכל הימים, מ"השיעורים השמורים" וגם מ-Drive. לא ניתן לבטל פעולה זו.')) return;
+      deleteLessonEverywhere(name, driveAuthIfEnabled(), function(){ showToast("נמחק לצמיתות"); onDone && onDone(); });
+    };
   }
 
   // Two-way sync of the whole library + week plan with the Drive folder
   function driveSync(){
     var stats = { down: 0, up: 0, placed: 0 };
+    var diag = [];
     var remotePlanCache = null;
+    var remoteSeen = {};
     var report = function(m){ setDriveProgress(m); };
     return refreshAllP().then(function(){
       // every lesson on a day must exist in the library too
@@ -2624,9 +2801,11 @@
         }
       });
       return chain;
-    }).then(refreshAllP).then(driveRootFolder).then(function(folderId){
+    }).then(refreshAllP).then(driveRootFolderIds).then(function(ids){
+      var folderId = ids[0];
+      if(ids.length > 1) diag.push("נמצאו " + ids.length + " תיקיות בשם \"" + driveFolderName() + "\" ב-Drive - נקראות כולן, השמירה היא בוותיקה שבהן.");
       report("קורא את התיקייה ב-Drive…");
-      return driveListFolder(folderId).then(function(files){
+      return driveListFolders(ids).then(function(files){
         var remoteNames = Object.keys(files).filter(function(n){ return /\.json$/i.test(n) && !RESERVED.test(n); });
         var remote = {};   // lesson name -> parsed file
         var chain = Promise.resolve();
@@ -2635,7 +2814,8 @@
             report("קורא שיעור " + (i + 1) + " מתוך " + remoteNames.length + "…");
             return driveDownload(files[fn].id).then(function(r){ return r.json(); }).then(function(o){
               if(o && o.app === "lesson-planner" && o.type === "lesson" && o.name){ o._file = files[fn]; remote[o.name.trim()] = o; }
-            }).catch(function(e){ console.warn("skip", fn, e); });
+              else diag.push("דולג: " + fn + " (אינו קובץ שיעור של האפליקציה)");
+            }).catch(function(e){ console.warn("skip", fn, e); diag.push("דולג: " + fn + " (" + ((e && e.message) || "שגיאה").slice(0, 80) + ")"); });
           });
         });
         if(files["week-plan.json"]){
@@ -2645,8 +2825,9 @@
           });
         }
         return chain.then(function(){
+          Object.keys(remote).forEach(function(n){ remoteSeen[n] = true; });
           var tomb = driveCfg.tombstones || {};
-          var toPull = [], toPush = [], toTrash = [], newNames = [];
+          var toPull = [], toPush = [], toTrash = [], newNames = [], toDelLocal = [];
           Object.keys(remote).forEach(function(name){
             var r = remote[name], l = localTemplate(name);
             if(tomb[name] && !l){
@@ -2657,7 +2838,12 @@
             else if((r.updated || 0) > tplStamp(l) + 1000) toPull.push(name);
             else if(tplStamp(l) > (r.updated || 0) + 1000) toPush.push(name);
           });
-          templates.forEach(function(t){ var n = (t.name || "").trim(); if(!remote[n]) toPush.push(n); });
+          templates.forEach(function(t){
+            var n = (t.name || "").trim();
+            if(remote[n]) return;
+            // it was on Drive at the last sync and is gone now -> deleted from another device
+            if(driveCfg.known && driveCfg.known[n]) toDelLocal.push(n); else toPush.push(n);
+          });
 
           // --- trash lessons that were deleted on this device ---
           var c2 = Promise.resolve();
@@ -2667,6 +2853,10 @@
                 method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true })
               }).then(function(){ delete tomb[name]; });
             });
+          });
+          // --- lessons deleted from Drive on another device ---
+          toDelLocal.forEach(function(name){
+            c2 = c2.then(function(){ return deleteLessonLocal(name); }).then(function(){ diag.push("נמחק במכשיר כי נמחק ב-Drive: " + name); });
           });
           // --- pull ---
           toPull.forEach(function(name, i){
@@ -2691,7 +2881,11 @@
                 }).then(function(){ stats.placed++; });
               });
             }
-            return ch;
+            return ch.then(function(){
+              newNames.forEach(function(n){
+                if(!dayLessons.some(function(l){ return (l.name || "").trim() === n; })) diag.push("נוסף לספרייה בלבד (לא משובץ ביום): " + n + " - לחפש תחת \"שיעורים\"");
+              });
+            });
           });
           // --- push ---
           var uniquePush = toPush.filter(function(n, k){ return toPush.indexOf(n) === k; });
@@ -2707,28 +2901,46 @@
             return c3;
           }).then(function(){
             driveCfg.tombstones = tomb; saveDriveConfig();
-            // --- week plan ---
-            var plan = files["week-plan.json"];
-            if(!plan) return pushPlan(folderId, files);
+            // --- week plan: merged against the plan this device saw at its last sync ---
             report("מסנכרן את תכנית השבוע…");
-            return driveDownload(plan.id).then(function(r){ return r.json(); }).then(function(rp){
-              // an empty local plan (fresh device) must never overwrite the one on Drive
-              var localStamp = localPlan().length ? planStamp() : 0;
-              if(rp && Array.isArray(rp.entries) && (rp.updated || 0) > localStamp){
-                var have = {};
-                dayLessons.forEach(function(l){ have[(l.name || "").trim()] = true; });
-                var c4 = Promise.resolve();
-                rp.entries.forEach(function(e){
-                  var n = (e.name || "").trim();
-                  if(have[n]) return;
-                  var tpl = localTemplate(n); if(!tpl) return;
-                  c4 = c4.then(function(){
-                    return putRecord("dayLessons", { day: e.day, name: n, items: tpl.items, order: e.order || 0, updated: tplStamp(tpl) });
-                  });
+            return refreshAllP().then(function(){
+              var base = driveCfg.lastPlan || {};
+              var local = {}; dayLessons.forEach(function(l){ local[(l.name || "").trim()] = l; });
+              var remoteMap = {};
+              var hasRemote = !!(remotePlanCache && Array.isArray(remotePlanCache.entries));
+              if(hasRemote) remotePlanCache.entries.forEach(function(e){ remoteMap[(e.name || "").trim()] = e; });
+              var ch = Promise.resolve();
+              if(hasRemote){
+                var names = {};
+                [base, local, remoteMap].forEach(function(m){ Object.keys(m).forEach(function(n){ names[n] = true; }); });
+                Object.keys(names).forEach(function(n){
+                  var b = base[n];
+                  var l = local[n] ? local[n].day : undefined;
+                  var r = remoteMap[n] ? remoteMap[n].day : undefined;
+                  if(l === r) return;      // same already
+                  if(r === b) return;      // other device did not change it: this device's version stands
+                  if(l !== b) return;      // changed on both: this device wins
+                  if(r === undefined){
+                    ch = ch.then(function(){ return new Promise(function(res){ deleteDayLesson(local[n].id, res); }); })
+                      .then(function(){ diag.push("הוסר מהיום (בהתאם ל-Drive): " + n); });
+                  } else if(l === undefined){
+                    var tpl = localTemplate(n); if(!tpl) return;
+                    ch = ch.then(function(){
+                      return putRecord("dayLessons", { day: r, name: n, items: tpl.items, order: remoteMap[n].order || 0, updated: tplStamp(tpl) });
+                    }).then(function(){ stats.placed++; });
+                  } else {
+                    ch = ch.then(function(){
+                      return putRecord("dayLessons", { id: local[n].id, day: r, name: local[n].name, items: local[n].items, order: remoteMap[n].order || 0, updated: local[n].updated || Date.now() });
+                    });
+                  }
                 });
-                return c4.then(refreshAllP).then(function(){ return pushPlan(folderId, files); });
               }
-              return localPlan().length ? pushPlan(folderId, files) : null;
+              return ch.then(refreshAllP).then(function(){ return pushPlan(folderId, files); }).then(function(){
+                var lp = {}; dayLessons.forEach(function(l){ lp[(l.name || "").trim()] = l.day; });
+                var kn = {}; templates.forEach(function(t){ kn[(t.name || "").trim()] = true; });
+                driveCfg.lastPlan = lp; driveCfg.known = kn;
+                saveDriveConfig();
+              });
             });
           });
         });
@@ -2736,6 +2948,9 @@
     }).then(function(){ return refreshAllP(); }).then(function(){
       driveCfg.lastSync = Date.now(); saveDriveConfig();
       renderDayNav(); renderSlotList();
+      var names = Object.keys(remoteSeen);
+      diag.unshift("ב-Drive נמצאו " + names.length + " שיעורים" + (names.length ? ": " + names.join(", ") : ""));
+      driveDetail = diag.join("\n");
       return "סונכרן עם Drive: " + stats.down + " ירדו, " + stats.up + " עלו" + (stats.placed ? ", " + stats.placed + " הוצבו בימים" : "");
     });
   }
@@ -2780,7 +2995,7 @@
   }
 
   document.getElementById("btnDriveSync").onclick = function(){ runDrive("מסנכרן", driveSync); };
-  document.getElementById("btnQuickSync").onclick = function(){ runDrive("מסנכרן", driveSync); };
+  document.getElementById("btnQuickSync").onclick = function(){ openTransferSheet(); runDrive("מסנכרן", driveSync); };
   document.getElementById("btnDriveSaveCfg").onclick = function(){
     driveCfg.clientId = document.getElementById("driveClientId").value.trim();
     driveCfg.folderName = document.getElementById("driveFolderName").value.trim() || DEFAULT_FOLDER;
