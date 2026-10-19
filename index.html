@@ -316,6 +316,9 @@
   .reuse-item:last-child{ border-bottom:none; }
   .reuse-item:active{ background:var(--paper); }
   .reuse-item .when{ font-family:var(--serif); font-size:13.5px; font-weight:600; }
+  .reuse-item .act-snippet{ font-size:13px; color:var(--ink); margin-top:3px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .reuse-item .act-snippet mark{ background:#f3df9a; color:inherit; border-radius:3px; padding:0 1px; }
+  .reuse-item .act-add{ flex:none; font-size:12px; font-weight:600; color:var(--accent, #8a6d1f); }
   .reuse-item .preview{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .reuse-item{ display:flex; align-items:center; gap:8px; justify-content:space-between; }
   .reuse-item .reuse-main{ min-width:0; flex:1; }
@@ -507,6 +510,10 @@
       <div id="itemsList"></div>
       <button class="btn-add-item edit-only" id="btnAddItem">+ הוספת פעילות</button>
       <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
+
+      <label class="field-label edit-only">חיפוש פעילות לפי מילה</label>
+      <input type="search" class="find-input edit-only" id="activityFind" placeholder="הקלד מילה שמופיעה בפעילות&hellip;">
+      <div class="reuse-list edit-only" id="activityResults"></div>
 
       <label class="field-label edit-only">השיעורים השמורים שלך</label>
       <input type="search" class="find-input edit-only" id="lessonTemplateFind" placeholder="חפש שיעור שמור&hellip;">
@@ -1299,6 +1306,8 @@
     nameInput.readOnly = locked;
 
     document.getElementById("lessonTemplateFind").value = "";
+    document.getElementById("activityFind").value = "";
+    renderActivityResults();
     renderTemplateList();
     stopAudio();
     renderItemsList();
@@ -1780,6 +1789,73 @@
   }
 
   document.getElementById("lessonTemplateFind").oninput = renderTemplateList;
+
+  // --- find a word inside any saved activity and insert that activity ---
+  // Looks through every activity of every saved lesson (library + days).
+  function renderActivityResults(){
+    var list = document.getElementById("activityResults");
+    var raw = (document.getElementById("activityFind").value || "").trim();
+    if(!raw){ list.innerHTML = ""; return; }
+    var q = raw.toLowerCase();
+
+    var byName = {};
+    templates.concat(dayLessons).forEach(function(l){
+      var nm = (l.name || "").trim();
+      if(!nm || nm === (currentLessonName || "").trim() || byName[nm]) return;
+      byName[nm] = l;
+    });
+
+    var hits = [];
+    Object.keys(byName).sort(function(a,b){ return a.localeCompare(b); }).forEach(function(nm){
+      var seen = {};
+      getItems(byName[nm]).forEach(function(it){
+        var ci = cloneItem(it);
+        var plain = ci.text.split("\n").filter(function(l){ return !SONG_RE.test(l); })
+          .map(function(l){ return l.replace(/^\s*##\s?/, "").trim(); }).filter(Boolean).join(" · ");
+        if(plain.toLowerCase().indexOf(q) === -1 || seen[plain]) return;
+        seen[plain] = true;
+        hits.push({ lesson: nm, item: ci, plain: plain });
+      });
+    });
+
+    if(hits.length === 0){
+      list.innerHTML = '<div class="empty-note">לא נמצאה פעילות עם &ldquo;' + escapeHtml(raw) + '&rdquo;.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    hits.slice(0, 50).forEach(function(h){
+      var p = h.plain, i = p.toLowerCase().indexOf(q);
+      var start = Math.max(0, i - 40);
+      var end = Math.min(p.length, i + q.length + 90);
+      var html = (start > 0 ? "&hellip;" : "") + escapeHtml(p.slice(start, i)) +
+        "<mark>" + escapeHtml(p.slice(i, i + q.length)) + "</mark>" +
+        escapeHtml(p.slice(i + q.length, end)) + (end < p.length ? "&hellip;" : "");
+      var songs_n = itemSongIds(h.item).length;
+      var row = document.createElement("div");
+      row.className = "reuse-item";
+      row.innerHTML =
+        '<div class="reuse-main">' +
+          '<div class="when">' + escapeHtml(h.lesson) + (songs_n ? " &middot; &#9835; " + songs_n : "") + '</div>' +
+          '<div class="act-snippet">' + html + '</div>' +
+        '</div>' +
+        '<span class="act-add">+ הוסף</span>';
+      row.onclick = function(){
+        var copy = { text: h.item.text, songId: null, subs: [] };
+        if(currentItems.length === 1 && !itemHasContent(currentItems[0])) currentItems[0] = copy;
+        else currentItems.push(copy);
+        renderItemsList();
+        showToast("הפעילות נוספה לשיעור");
+      };
+      list.appendChild(row);
+    });
+    if(hits.length > 50){
+      var more = document.createElement("div");
+      more.className = "empty-note";
+      more.textContent = "מוצגות 50 התוצאות הראשונות - הקלד עוד כדי לצמצם.";
+      list.appendChild(more);
+    }
+  }
+  document.getElementById("activityFind").oninput = renderActivityResults;
 
   // --- save / delete ---
   document.getElementById("btnSave").onclick = function(){
