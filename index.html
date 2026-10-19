@@ -472,9 +472,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M21 7H9M7 13l-4 4 4 4M3 17h12"/></svg>
         העברה
       </button>
-      <button class="btn-library edit-only" id="btnQuickSync" style="display:none;">
-        &#9729; סנכרון
-      </button>
       <button class="btn-ready" id="btnReady">מצב עריכה</button>
     </div>
   </div>
@@ -2445,8 +2442,6 @@
   function driveFolderName(){ return (driveCfg.folderName || "").trim() || DEFAULT_FOLDER; }
 
   function updateDriveStatus(){
-    var qs = document.getElementById("btnQuickSync");
-    if(qs) qs.style.display = driveCfg.clientId ? "" : "none";
     var el = document.getElementById("driveState");
     if(!el) return;
     if(!driveCfg.clientId){ el.textContent = "(לא הוגדר)"; el.className = "drive-state"; }
@@ -3113,7 +3108,6 @@
   }
 
   document.getElementById("btnDriveSync").onclick = function(){ runDrive("מסנכרן", driveSync); };
-  document.getElementById("btnQuickSync").onclick = function(){ openTransferSheet(); runDrive("מסנכרן", driveSync); };
   document.getElementById("btnDriveSaveCfg").onclick = function(){
     driveCfg.clientId = document.getElementById("driveClientId").value.trim();
     driveCfg.folderName = document.getElementById("driveFolderName").value.trim() || DEFAULT_FOLDER;

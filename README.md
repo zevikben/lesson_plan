@@ -133,8 +133,7 @@ The Transfer screen has just three things:
    Drive, and never deletes anything on the device. In Drive (default folder
    "Weekly Lesson Plan") every lesson is a file named after the lesson, every
    song a file named after the song, and `week-plan.json` remembers which
-   lesson is on which day. The same button also sits at the top of the main
-   screen (☁ סנכרון). A lesson deleted from "השיעורים השמורים שלך" is also
+   lesson is on which day. Sync is manual and lives only on this screen. A lesson deleted from "השיעורים השמורים שלך" is also
    removed from Drive.
 2. **הגדרות Drive** - your Client ID, the folder name, and an optional
    tick to also save each lesson to Drive when you press **שמירה** (Google
