@@ -1356,8 +1356,8 @@
     if(duplicate){
       showToast(
         duplicate.day === currentDay
-          ? ('השם "' + name + '" כבר בשימוש ביום זה - יש לבחור שם אחר')
-          : ('השם "' + name + '" כבר בשימוש ביום ' + DAYS[duplicate.day] + ' - יש לבחור שם אחר')
+          ? ('השם "' + name + '" כבר בשימוש ביום זה - בחר שם אחר')
+          : ('השם "' + name + '" כבר בשימוש ביום ' + DAYS[duplicate.day] + ' - בחר שם אחר')
       );
       nameInput.focus();
       nameInput.select();
@@ -1395,7 +1395,7 @@
       if(useDrive && !res.checked) showToast("לא ניתן היה לבדוק ב-Drive - השם נבדק רק במכשיר");
       if(!local && !remoteHit){ proceed(null); return; }
       var where = remoteHit ? "ב-Drive" : 'ב"שיעורים השמורים"';
-      if(!confirm('שיעור בשם "' + name + '" כבר קיים ' + where + '.\n\nאישור - לטעון אותו ליום הזה.\nביטול - לבחור שם אחר.')){
+      if(!confirm('שיעור בשם "' + name + '" כבר קיים ' + where + '.\n\nאישור - טען אותו ליום הזה.\nביטול - בחר שם אחר.')){
         nameInput.focus(); nameInput.select();
         return;
       }
