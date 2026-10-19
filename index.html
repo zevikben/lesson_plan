@@ -123,6 +123,12 @@
     padding:12px 14px;
     cursor:pointer;
   }
+  .slot-drag{ touch-action:none; cursor:grab; background:none; border:none; color:var(--ink-soft); width:24px; height:32px; flex:0 0 auto; padding:0; margin-inline-start:-6px; display:flex; align-items:center; justify-content:center; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  .slot-drag svg{ width:18px; height:18px; }
+  .slot.dragging{ position:relative; z-index:10; box-shadow:0 8px 22px rgba(0,0,0,.25); }
+  .slot.drop-before{ box-shadow:0 -3px 0 var(--gold); }
+  .slot.drop-after{ box-shadow:0 3px 0 var(--gold); }
+  #dayNav button.drop-day{ outline:3px solid var(--gold); outline-offset:-3px; background:rgba(201,169,110,.35); }
   .slot-time{
     font-family:var(--serif);
     font-size:15px;
@@ -1030,6 +1036,108 @@
     return lessonsForDay(day).length;
   }
 
+  // ---- drag a lesson: up/down within the day, or onto a day tab to move it there ----
+  function reindexAndSave(day, orderedLessons){
+    var chain = Promise.resolve();
+    orderedLessons.forEach(function(l, i){
+      if((l.order || 0) === i && l.day === day) return;
+      chain = chain.then(function(){
+        return putRecord("dayLessons", { id: l.id, day: day, name: l.name, items: l.items, order: i, updated: l.updated || Date.now() });
+      });
+    });
+    return chain;
+  }
+  function drivePlanForDays(days, authP){
+    if(!driveCfg.clientId) return;
+    var ready = authP ? authP : Promise.resolve(driveTokenValid());
+    ready.then(function(ok){
+      if(!ok){ showToast("הסדר יתעדכן ב-Drive בסנכרון הבא"); return; }
+      var changes = dayLessons.filter(function(l){ return days.indexOf(l.day) >= 0; })
+        .map(function(l){ return { name: (l.name || "").trim(), info: { day: l.day, order: l.order || 0 } }; });
+      return driveRootFolderIds().then(function(ids){
+        return driveListFolders(ids).then(function(files){ return drivePlanApply(ids[0], files, changes); });
+      });
+    }).catch(function(e){ console.warn("Drive plan update", e); showToast("הסדר יתעדכן ב-Drive בסנכרון הבא"); });
+  }
+  function reorderLessons(day, fromIdx, toIdx, authP){
+    var list = lessonsForDay(day);
+    var moved = list.splice(fromIdx, 1)[0];
+    list.splice(toIdx, 0, moved);
+    reindexAndSave(day, list).then(refreshAllP).then(function(){
+      renderDayNav(); renderSlotList();
+      drivePlanForDays([day], authP);
+    });
+  }
+  function moveLessonToDay(lesson, toDay, authP){
+    var fromDay = lesson.day;
+    var rest = lessonsForDay(fromDay).filter(function(l){ return l.id !== lesson.id; });
+    var newOrder = lessonsForDay(toDay).length;
+    putRecord("dayLessons", { id: lesson.id, day: toDay, name: lesson.name, items: lesson.items, order: newOrder, updated: lesson.updated || Date.now() })
+      .then(function(){ return reindexAndSave(fromDay, rest); })
+      .then(refreshAllP).then(function(){
+        renderDayNav(); renderSlotList();
+        showToast('"' + (lesson.name || "").trim() + '" הועבר ליום ' + DAYS[toDay]);
+        drivePlanForDays([fromDay, toDay], authP);
+      });
+  }
+  function startLessonDrag(e, lesson, handle){
+    var main = document.getElementById("slotList");
+    var slots = Array.prototype.slice.call(main.querySelectorAll(".slot"));
+    var dayList = lessonsForDay(currentDay);
+    var idx = dayList.map(function(l){ return l.id; }).indexOf(lesson.id);
+    var slot = slots[idx];
+    if(!slot) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll("#dayNav button"));
+    e.preventDefault();
+    try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+    var startY = e.clientY, startScroll = window.pageYOffset, target = idx, hoverDay = null;
+    slot.classList.add("dragging");
+
+    function onMove(ev){
+      if(ev.clientY > window.innerHeight - 60) window.scrollBy(0, 12);
+      else if(ev.clientY < 60) window.scrollBy(0, -12);
+      slot.style.transform = "translateY(" + (ev.clientY - startY + (window.pageYOffset - startScroll)) + "px)";
+      // over a day tab?
+      hoverDay = null;
+      tabs.forEach(function(t, i){
+        var r = t.getBoundingClientRect();
+        var over = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+        t.classList.toggle("drop-day", over && i !== currentDay);
+        if(over && i !== currentDay) hoverDay = i;
+      });
+      var others = slots.filter(function(r, k){ return k !== idx; });
+      var c = 0;
+      others.forEach(function(r){
+        var rr = r.getBoundingClientRect();
+        if(ev.clientY > rr.top + rr.height / 2) c++;
+        r.classList.remove("drop-before", "drop-after");
+      });
+      target = c;
+      if(hoverDay === null){
+        if(c < others.length) others[c].classList.add("drop-before");
+        else if(others.length) others[others.length - 1].classList.add("drop-after");
+      }
+    }
+    function finish(ev){
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", finish);
+      handle.removeEventListener("pointercancel", finish);
+      try{ handle.releasePointerCapture(e.pointerId); }catch(err){}
+      tabs.forEach(function(t){ t.classList.remove("drop-day"); });
+      var cancelled = !ev || ev.type === "pointercancel";
+      if(!cancelled && hoverDay !== null){
+        moveLessonToDay(lesson, hoverDay, driveAuthIfEnabled());
+      } else if(!cancelled && target !== idx){
+        reorderLessons(currentDay, idx, target, driveAuthIfEnabled());
+      } else {
+        renderSlotList();
+      }
+    }
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
+  }
+
   function renderDayNav(){
     var nav = document.getElementById("dayNav");
     nav.innerHTML = "";
@@ -1087,6 +1195,11 @@
       el.className = "slot" + (items.length ? " has-content" : "");
       el.innerHTML =
         '<div class="slot-row">' +
+          (lesson.id !== null
+            ? '<button class="slot-drag edit-only" aria-label="גרירה לשינוי סדר או יום">' +
+                '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>' +
+              '</button>'
+            : '') +
           '<div class="slot-body">' +
             '<div class="lesson-name">' + escapeHtml(lesson.name) + '</div>' +
             bodyHtml +
@@ -1098,8 +1211,13 @@
           ) : '') +
           '<div class="chevron">&#8249;</div>' +
         '</div>';
+      var dragH = el.querySelector(".slot-drag");
+      if(dragH){
+        dragH.onclick = function(e){ e.stopPropagation(); };
+        dragH.onpointerdown = function(lessonRec){ return function(e){ startLessonDrag(e, lessonRec, this); }; }(lesson);
+      }
       el.querySelector(".slot-row").onclick = function(id){ return function(e){
-        if(e.target.closest('[data-role="quick-delete"]')) return;
+        if(e.target.closest('[data-role="quick-delete"]') || e.target.closest(".slot-drag")) return;
         openLessonSheet(currentDay, id);
       }; }(lesson.id);
       var quickDelete = el.querySelector('[data-role="quick-delete"]');
@@ -2654,7 +2772,7 @@
         .then(function(r){ files["week-plan.json"] = { id: r.id, name: "week-plan.json" }; });
     }).then(function(){
       driveCfg.lastPlan = driveCfg.lastPlan || {};
-      changes.forEach(function(c){ if(c.info) driveCfg.lastPlan[c.name] = c.info.day; else delete driveCfg.lastPlan[c.name]; });
+      changes.forEach(function(c){ if(c.info) driveCfg.lastPlan[c.name] = c.info.day + ":" + (c.info.order || 0); else delete driveCfg.lastPlan[c.name]; });
       saveDriveConfig();
     });
   }
@@ -2915,8 +3033,8 @@
                 [base, local, remoteMap].forEach(function(m){ Object.keys(m).forEach(function(n){ names[n] = true; }); });
                 Object.keys(names).forEach(function(n){
                   var b = base[n];
-                  var l = local[n] ? local[n].day : undefined;
-                  var r = remoteMap[n] ? remoteMap[n].day : undefined;
+                  var l = local[n] ? local[n].day + ":" + (local[n].order || 0) : undefined;
+                  var r = remoteMap[n] ? remoteMap[n].day + ":" + (remoteMap[n].order || 0) : undefined;
                   if(l === r) return;      // same already
                   if(r === b) return;      // other device did not change it: this device's version stands
                   if(l !== b) return;      // changed on both: this device wins
@@ -2926,17 +3044,17 @@
                   } else if(l === undefined){
                     var tpl = localTemplate(n); if(!tpl) return;
                     ch = ch.then(function(){
-                      return putRecord("dayLessons", { day: r, name: n, items: tpl.items, order: remoteMap[n].order || 0, updated: tplStamp(tpl) });
+                      return putRecord("dayLessons", { day: remoteMap[n].day, name: n, items: tpl.items, order: remoteMap[n].order || 0, updated: tplStamp(tpl) });
                     }).then(function(){ stats.placed++; });
                   } else {
                     ch = ch.then(function(){
-                      return putRecord("dayLessons", { id: local[n].id, day: r, name: local[n].name, items: local[n].items, order: remoteMap[n].order || 0, updated: local[n].updated || Date.now() });
+                      return putRecord("dayLessons", { id: local[n].id, day: remoteMap[n].day, name: local[n].name, items: local[n].items, order: remoteMap[n].order || 0, updated: local[n].updated || Date.now() });
                     });
                   }
                 });
               }
               return ch.then(refreshAllP).then(function(){ return pushPlan(folderId, files); }).then(function(){
-                var lp = {}; dayLessons.forEach(function(l){ lp[(l.name || "").trim()] = l.day; });
+                var lp = {}; dayLessons.forEach(function(l){ lp[(l.name || "").trim()] = l.day + ":" + (l.order || 0); });
                 var kn = {}; templates.forEach(function(t){ kn[(t.name || "").trim()] = true; });
                 driveCfg.lastPlan = lp; driveCfg.known = kn;
                 saveDriveConfig();

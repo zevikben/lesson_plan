@@ -59,6 +59,10 @@ that, you can turn on Airplane Mode and it keeps working completely.
 - Reordering activities: when a lesson has more than one activity, each has a
   drag handle (⋮⋮) on its right. Press and drag it up or down to change the
   order; the numbers update by themselves.
+- Moving lessons: each lesson card has a drag handle (⋮⋮) on its right. Drag
+  it up or down to change its place within the day, or drag it onto another
+  day's tab at the top (it lights up) to move the lesson to that day. The
+  order and the day are updated on Drive too.
 - Deleting a lesson (the ✕ on its card, or **מחיקת שיעור** inside it) asks
   what you mean: **הסרה מהיום בלבד** takes it off that day but keeps it in
   "השיעורים השמורים" and on Drive; **מחיקה לצמיתות** removes it from every
