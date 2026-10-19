@@ -56,6 +56,9 @@ that, you can turn on Airplane Mode and it keeps working completely.
   cursor on a line and tap **B כותרת משנה** - that line becomes bold and
   unnumbered, and stays bold in Ready mode and in the saved-lessons list.
   Tap the button again to turn it back into a normal line.
+- Reordering activities: when a lesson has more than one activity, each has a
+  drag handle (⋮⋮) on its right. Press and drag it up or down to change the
+  order; the numbers update by themselves.
 - To remove a lesson, either open it and tap **Delete lesson**, or tap the
   small ✕ directly on its card in the day's list.
 - **Add new MP3**: pick an audio file from your phone (e.g. from Files, or

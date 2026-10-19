@@ -223,6 +223,11 @@
 
   .item-text.is-empty::before{ content:attr(data-ph); color:var(--ink-soft); opacity:.6; position:absolute; pointer-events:none; }
   .item-text .sub-heading{ margin-top:0; }
+  .item-drag{ touch-action:none; cursor:grab; background:none; border:none; color:var(--ink-soft); width:22px; height:32px; flex:0 0 auto; padding:0; margin-top:1px; display:flex; align-items:center; justify-content:center; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  .item-drag svg{ width:18px; height:18px; }
+  .item-row.dragging{ position:relative; z-index:5; background:var(--paper-raised); box-shadow:0 6px 18px rgba(0,0,0,.2); }
+  .item-row.drop-before{ box-shadow:inset 0 3px 0 var(--gold); }
+  .item-row.drop-after{ box-shadow:inset 0 -3px 0 var(--gold); }
   .song-line{ margin:4px 0; }
   .item-text-view{ flex:1; font-size:14.5px; line-height:1.5; color:var(--ink); padding-top:9px; }
   .sub-heading{ font-weight:700; color:var(--ink); margin-top:6px; }
@@ -483,9 +488,9 @@
     <button class="btn primary edit-only" id="btnNameContinue" style="margin-top:10px; display:none;">המשך</button>
 
     <div id="lessonBody">
-      <label class="field-label">פריטים</label>
+      <label class="field-label">פעילויות</label>
       <div id="itemsList"></div>
-      <button class="btn-add-item edit-only" id="btnAddItem">+ הוספת פריט</button>
+      <button class="btn-add-item edit-only" id="btnAddItem">+ הוספת פעילות</button>
       <audio id="audioPlayer" style="width:100%; margin-top:12px; display:none;" controls></audio>
 
       <label class="field-label edit-only">השיעורים השמורים שלך</label>
@@ -1266,6 +1271,11 @@
 
       row.innerHTML =
         '<div class="item-top">' +
+          (!locked && items.length > 1
+            ? '<button class="item-drag" data-idx="' + idx + '" aria-label="גרירה לשינוי סדר">' +
+                '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>' +
+              '</button>'
+            : '') +
           '<div class="item-number">' + (idx+1) + '.</div>' +
           (locked
             ? '<div class="item-text-view">' + richTextHtml(item.text, false) + '</div>'
@@ -1342,12 +1352,62 @@
       };
     });
 
+    // drag handles: press and drag an activity up or down to change its position
+    wrap.querySelectorAll(".item-drag").forEach(function(h){
+      h.onpointerdown = function(e){ startItemDrag(e, +h.dataset.idx, h); };
+    });
+
     // all buttons within the items list are handled through one delegated click handler
     wrap.querySelectorAll("[data-action]").forEach(function(btn){
       // keep the caret in the text box when tapping a button next to it
       btn.onmousedown = function(e){ if(/^(toggle-h2|add-song-new|add-song-pick)$/.test(btn.dataset.action)) e.preventDefault(); };
       btn.onclick = function(){ handleItemAction(btn.dataset.action, +btn.dataset.idx, null); };
     });
+  }
+
+  // Drag an activity to a new position (works with finger and mouse)
+  function startItemDrag(e, idx, handle){
+    var wrap = document.getElementById("itemsList");
+    var rows = Array.prototype.slice.call(wrap.querySelectorAll(".item-row"));
+    var row = rows[idx];
+    if(!row) return;
+    var scroller = wrap.closest(".sheet-scroll") || document.scrollingElement;
+    e.preventDefault();
+    try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+    var startY = e.clientY, startScroll = scroller.scrollTop, target = idx;
+    row.classList.add("dragging");
+
+    function onMove(ev){
+      var sr = scroller.getBoundingClientRect();
+      if(ev.clientY < sr.top + 50) scroller.scrollTop -= 12;
+      else if(ev.clientY > sr.bottom - 50) scroller.scrollTop += 12;
+      row.style.transform = "translateY(" + (ev.clientY - startY + (scroller.scrollTop - startScroll)) + "px)";
+      var others = rows.filter(function(r, k){ return k !== idx; });
+      var c = 0;
+      others.forEach(function(r){
+        var rr = r.getBoundingClientRect();
+        if(ev.clientY > rr.top + rr.height / 2) c++;
+        r.classList.remove("drop-before", "drop-after");
+      });
+      target = c;
+      if(c < others.length) others[c].classList.add("drop-before");
+      else if(others.length) others[others.length - 1].classList.add("drop-after");
+    }
+    function finish(ev){
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", finish);
+      handle.removeEventListener("pointercancel", finish);
+      try{ handle.releasePointerCapture(e.pointerId); }catch(err){}
+      if(ev && ev.type !== "pointercancel" && target !== idx){
+        var moved = currentItems.splice(idx, 1)[0];
+        currentItems.splice(target, 0, moved);
+        openPickerIndex = null;
+      }
+      renderItemsList();
+    }
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
   }
 
   // index of the text line the caret is on (or last was on) in item idx; -1 = end
