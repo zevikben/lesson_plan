@@ -457,6 +457,9 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4M21 7H9M7 13l-4 4 4 4M3 17h12"/></svg>
         העברה
       </button>
+      <button class="btn-library edit-only" id="btnQuickSync" style="display:none;">
+        &#9729; סנכרון
+      </button>
       <button class="btn-ready" id="btnReady">מצב עריכה</button>
     </div>
   </div>
@@ -2279,6 +2282,8 @@
   function driveFolderName(){ return (driveCfg.folderName || "").trim() || DEFAULT_FOLDER; }
 
   function updateDriveStatus(){
+    var qs = document.getElementById("btnQuickSync");
+    if(qs) qs.style.display = driveCfg.clientId ? "" : "none";
     var el = document.getElementById("driveState");
     if(!el) return;
     if(!driveCfg.clientId){ el.textContent = "(לא הוגדר)"; el.className = "drive-state"; }
@@ -2628,7 +2633,8 @@
 
   // Two-way sync of the whole library + week plan with the Drive folder
   function driveSync(){
-    var stats = { down: 0, up: 0 };
+    var stats = { down: 0, up: 0, placed: 0 };
+    var remotePlanCache = null;
     var report = function(m){ setDriveProgress(m); };
     return refreshAllP().then(function(){
       // every lesson on a day must exist in the library too
@@ -2656,16 +2662,22 @@
             }).catch(function(e){ console.warn("skip", fn, e); });
           });
         });
+        if(files["week-plan.json"]){
+          chain = chain.then(function(){
+            return driveDownload(files["week-plan.json"].id).then(function(r){ return r.json(); })
+              .then(function(rp){ remotePlanCache = rp; }).catch(function(){});
+          });
+        }
         return chain.then(function(){
           var tomb = driveCfg.tombstones || {};
-          var toPull = [], toPush = [], toTrash = [];
+          var toPull = [], toPush = [], toTrash = [], newNames = [];
           Object.keys(remote).forEach(function(name){
             var r = remote[name], l = localTemplate(name);
             if(tomb[name] && !l){
               if(tomb[name] >= (r.updated || 0)) { toTrash.push(name); return; }
               delete tomb[name];
             }
-            if(!l) toPull.push(name);
+            if(!l){ toPull.push(name); newNames.push(name); }
             else if((r.updated || 0) > tplStamp(l) + 1000) toPull.push(name);
             else if(tplStamp(l) > (r.updated || 0) + 1000) toPush.push(name);
           });
@@ -2686,6 +2698,24 @@
               report("מוריד שיעור: " + name);
               return applyRemoteLesson(remote[name], files).then(function(){ stats.down++; });
             });
+          });
+          // lessons that are new on this device go to the day the other device put them on
+          c2 = c2.then(refreshAllP).then(function(){
+            var ch = Promise.resolve();
+            if(remotePlanCache && Array.isArray(remotePlanCache.entries)){
+              var have = {};
+              dayLessons.forEach(function(l){ have[(l.name || "").trim()] = true; });
+              remotePlanCache.entries.forEach(function(e){
+                var n = (e.name || "").trim();
+                if(newNames.indexOf(n) < 0 || have[n]) return;
+                var tpl = localTemplate(n); if(!tpl) return;
+                have[n] = true;
+                ch = ch.then(function(){
+                  return putRecord("dayLessons", { day: e.day, name: n, items: tpl.items, order: e.order || 0, updated: tplStamp(tpl) });
+                }).then(function(){ stats.placed++; });
+              });
+            }
+            return ch;
           });
           // --- push ---
           var uniquePush = toPush.filter(function(n, k){ return toPush.indexOf(n) === k; });
@@ -2730,7 +2760,7 @@
     }).then(function(){ return refreshAllP(); }).then(function(){
       driveCfg.lastSync = Date.now(); saveDriveConfig();
       renderDayNav(); renderSlotList();
-      return "סונכרן עם Drive: " + stats.down + " ירדו, " + stats.up + " עלו";
+      return "סונכרן עם Drive: " + stats.down + " ירדו, " + stats.up + " עלו" + (stats.placed ? ", " + stats.placed + " הוצבו בימים" : "");
     });
   }
 
@@ -2775,6 +2805,7 @@
 
   document.getElementById("btnDriveExport").onclick = function(){ runDrive("מייצא", driveExportSnapshot); };
   document.getElementById("btnDriveSync").onclick = function(){ runDrive("מסנכרן", driveSync); };
+  document.getElementById("btnQuickSync").onclick = function(){ runDrive("מסנכרן", driveSync); };
   document.getElementById("btnDriveSaveCfg").onclick = function(){
     driveCfg.clientId = document.getElementById("driveClientId").value.trim();
     driveCfg.folderName = document.getElementById("driveFolderName").value.trim() || DEFAULT_FOLDER;
