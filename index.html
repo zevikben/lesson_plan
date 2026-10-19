@@ -306,6 +306,9 @@
     border-bottom:1px solid var(--line); cursor:pointer;
   }
   .song-picker-item:last-child{ border-bottom:none; }
+  .dur{ font-size:11.5px; font-weight:500; color:var(--ink-soft); font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; flex:none; margin-inline-start:6px; }
+  .dur:empty{ display:none; }
+  .item-song-chip .dur{ margin-inline-start:4px; margin-inline-end:2px; }
   .song-picker-item .name{ flex:1; font-size:13.5px; }
   .song-picker-item:active{ background:var(--paper); }
 
@@ -854,7 +857,7 @@
   function songChipHtml(id, editable){
     return '<span class="item-song-chip">' +
       '<button class="play-btn" data-song-play="' + id + '" aria-label="נגינה">' + PLAY_SVG + '</button>' +
-      '<span class="name">' + escapeHtml(songName(id)) + '</span>' +
+      '<span class="name">' + escapeHtml(songName(id)) + '</span>' + durSpan(id) +
       (editable ? '<button class="remove-btn" data-song-remove="' + id + '" aria-label="הסרת שיר">' + X_SVG + '</button>' : '') +
       '</span>';
   }
@@ -933,6 +936,7 @@
         getAllTemplates(function(t){
           templates = t;
           then && then();
+          ensureDurations();
         });
       });
     });
@@ -1238,6 +1242,60 @@
   function songName(id){
     var s = songs.filter(function(s){ return s.id === id; })[0];
     return s ? escapeHtml(s.name) : "(השיר הוסר)";
+  }
+
+  // --- song length (measured once from the audio file, then remembered) ---
+  function fmtDur(sec){
+    if(!(sec > 0) || !isFinite(sec)) return "";
+    sec = Math.round(sec);
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function songDur(id){
+    var s = songs.filter(function(x){ return x.id === id; })[0];
+    return s && s.duration ? fmtDur(s.duration) : "";
+  }
+  function durSpan(id){
+    return '<span class="dur" data-dur-for="' + id + '">' + songDur(id) + '</span>';
+  }
+  function paintDurations(){
+    document.querySelectorAll("[data-dur-for]").forEach(function(el){
+      el.textContent = songDur(+el.getAttribute("data-dur-for"));
+    });
+  }
+  var measuringDurations = false;
+  function ensureDurations(){
+    if(measuringDurations) return;
+    var todo = songs.filter(function(s){ return !s.duration && s.blob; });
+    if(!todo.length){ paintDurations(); return; }
+    measuringDurations = true;
+    (function next(){
+      var s = todo.shift();
+      if(!s){ measuringDurations = false; paintDurations(); return; }
+      var url = URL.createObjectURL(s.blob);
+      var a = new Audio();
+      var done = false;
+      function finish(d){
+        if(done) return; done = true;
+        clearTimeout(timer);
+        a.removeAttribute("src"); URL.revokeObjectURL(url);
+        if(d > 0 && isFinite(d)){
+          s.duration = d;
+          var g = tx("songs","readonly").get(s.id);
+          g.onsuccess = function(){
+            var rec = g.result;
+            if(rec){ rec.duration = d; try{ tx("songs","readwrite").put(rec); }catch(e){} }
+          };
+          paintDurations();
+        }
+        next();
+      }
+      var timer = setTimeout(function(){ finish(0); }, 4000);
+      a.preload = "metadata";
+      a.onloadedmetadata = function(){ finish(a.duration); };
+      a.onerror = function(){ finish(0); };
+      a.src = url;
+    })();
   }
 
   function autoSizeTextarea(el){
@@ -1670,7 +1728,7 @@
         songs.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(s){
           var opt = document.createElement("div");
           opt.className = "song-picker-item";
-          opt.innerHTML = '<span class="name">' + escapeHtml(s.name) + '</span>';
+          opt.innerHTML = '<span class="name">' + escapeHtml(s.name) + '</span>' + durSpan(s.id);
           opt.onclick = function(){
             insertSongLine(idx, s.id, pickLine);
             openPickerIndex = null;
@@ -2034,7 +2092,7 @@
         '<button class="icon-btn" aria-label="נגינה">' +
           '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
         '</button>' +
-        '<div class="name">' + escapeHtml(s.name) +
+        '<div class="name">' + escapeHtml(s.name) + durSpan(s.id) +
           '<span class="used-count">' + (count === 0 ? "עדיין לא בשימוש באף שיעור" : (count===1 ? "בשימוש בשיעור אחד" : "בשימוש ב-" + count + " שיעורים")) + '</span>' +
         '</div>' +
         '<button class="icon-btn" aria-label="שינוי שם">' +

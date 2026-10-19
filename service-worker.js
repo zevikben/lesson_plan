@@ -1,6 +1,6 @@
 // Bump this version string any time index.html/manifest/icons change,
 // so the service worker knows to fetch fresh copies.
-var CACHE_NAME = "lesson-planner-v54";
+var CACHE_NAME = "lesson-planner-v55";
 
 var APP_SHELL = [
   "./",
