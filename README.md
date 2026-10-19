@@ -115,25 +115,22 @@ week there (bigger screen, real keyboard), and then move it to your phone:
 You can also export from the phone and import back on the laptop the same
 way — it works in either direction.
 
-## Google Drive (lessons and songs, kept as named files)
-In **Transfer** (העברה) there is a Google Drive section. Everything lives in
-one Drive folder (default "Weekly Lesson Plan"):
-- every lesson is its own file **named after the lesson** (`<lesson name>.json`)
-- every song is its own file named after the song
-- `week-plan.json` remembers which lesson is on which day
-- `Backups/` holds the dated full exports made by **ייצוא ל-Drive**
-
-There is one place for both saving and reading: **סנכרון שיעורים ושירים עם
-Drive**. It uploads whatever is newer on this device and downloads whatever
-is newer on Drive (it never deletes anything on the device). Use it after
-editing on the laptop, and again on the phone. If you tick "לשמור כל שיעור גם
-ב-Drive", pressing **שמירה** on a lesson also saves that lesson (and its
-songs) to Drive right away; Google asks you to sign in again when the
-sign-in (about an hour) has expired. A lesson deleted from "השיעורים
-השמורים שלך" is also removed from Drive.
-
-Settings (open "הגדרות Google Drive"): your Client ID and the Drive folder
-name.
+## Transfer (העברה) and Google Drive
+The Transfer screen has just three things:
+1. **סנכרון עם Drive** - the one button for moving work between devices. It
+   uploads what is newer on this device and downloads what is newer on
+   Drive, and never deletes anything on the device. In Drive (default folder
+   "Weekly Lesson Plan") every lesson is a file named after the lesson, every
+   song a file named after the song, and `week-plan.json` remembers which
+   lesson is on which day. The same button also sits at the top of the main
+   screen (☁ סנכרון). A lesson deleted from "השיעורים השמורים שלך" is also
+   removed from Drive.
+2. **הגדרות Drive** - your Client ID, the folder name, and an optional
+   tick to also save each lesson to Drive when you press **שמירה** (Google
+   asks you to sign in again when the sign-in, about an hour, has expired).
+3. **מתקדם: העברה בקובץ** - Export / Import of one file with everything,
+   without Drive (emergency backup, or when there is no Drive). Import
+   replaces what is on the device.
 
 One-time setup (free): in console.cloud.google.com create a project, enable
 the **Google Drive API**, configure the OAuth consent screen (add your own

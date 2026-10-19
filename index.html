@@ -397,6 +397,8 @@
 
   .transfer-row{ display:flex; gap:10px; margin-top:8px; }
   .drive-box{ margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
+  .drive-box.first{ margin-top:0; padding-top:0; border-top:none; }
+  .drive-settings.advanced{ margin-top:18px; padding-top:10px; border-top:1px solid var(--line); }
   .drive-box .transfer-row{ flex-direction:column; }
   .drive-title{ font-weight:700; font-size:14px; margin-bottom:2px; }
   .drive-state{ font-weight:600; font-size:12px; color:var(--ink-soft); margin-inline-start:6px; }
@@ -554,54 +556,51 @@
     <button class="sheet-close" id="transferClose">&#10005;</button>
   </div>
   <div class="sheet-scroll">
-    <div class="transfer-row">
-      <button class="btn secondary" id="btnExport">ייצוא קובץ&hellip;</button>
-      <button class="btn secondary" id="btnImport">ייבוא קובץ&hellip;</button>
-    </div>
-    <div class="transfer-note">
-      <strong>ייצוא</strong> שומר הכול &mdash; כל שיעור, שיר והגדרה &mdash;
-      לתוך קובץ אחד. <strong>ייבוא</strong> טוען את הקובץ הזה במכשיר אחר,
-      ומחליף את כל מה שקיים כרגע במכשיר זה.
-    </div>
-
-    <div class="drive-box">
+    <div class="drive-box first">
       <div class="drive-title">Google Drive <span id="driveState" class="drive-state"></span></div>
       <div class="transfer-row">
-        <button class="btn secondary" id="btnDriveExport">ייצוא ל-Drive</button>
-      </div>
-      <div class="transfer-row">
-        <button class="btn" id="btnDriveSync">סנכרון שיעורים ושירים עם Drive</button>
+        <button class="btn primary" id="btnDriveSync">סנכרון עם Drive</button>
       </div>
       <div class="drive-progress" id="driveProgress"></div>
       <div class="transfer-note">
-        <strong>סנכרון</strong> הוא המקום היחיד לשמירה ולקריאה: כל שיעור נשמר ב-Drive
-        כקובץ בשם השיעור, כל שיר כקובץ בשם השיר, ויש קובץ אחד לתכנית השבוע.
-        הסנכרון מעלה מה שחדש במכשיר ומוריד מה שחדש ב-Drive (בלי למחוק כלום במכשיר).
-        שיעור שנמחק מ"השיעורים השמורים שלך" נמחק גם מ-Drive.
-        <strong>ייצוא ל-Drive</strong> מעלה קובץ גיבוי מלא עם תאריך לתיקיית Backups.
+        מעלה ל-Drive מה שחדש במכשיר, ומוריד מה שחדש ב-Drive. לא מוחק כלום במכשיר.
+        כל שיעור נשמר כקובץ בשם השיעור, וכל שיר כקובץ בשם השיר.
+        כדאי ללחוץ אחרי עריכה במכשיר אחד, ושוב לפני שפותחים במכשיר אחר.
       </div>
       <details class="drive-settings" id="driveSettings">
-        <summary>הגדרות Google Drive</summary>
+        <summary>הגדרות Drive</summary>
         <label class="field-label">Client ID של Google</label>
         <input type="text" id="driveClientId" dir="ltr" class="drive-input" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false">
         <label class="field-label">שם התיקייה ב-Drive</label>
         <input type="text" id="driveFolderName" class="drive-input" placeholder="Weekly Lesson Plan">
         <label class="drive-check"><input type="checkbox" id="driveAuto"> לשמור כל שיעור גם ב-Drive בלחיצה על "שמירה" (תיפתח התחברות ל-Google אם פג תוקפה)</label>
         <div class="transfer-row">
-          <button class="btn" id="btnDriveSaveCfg">שמירת הגדרות</button>
+          <button class="btn primary" id="btnDriveSaveCfg">שמירת הגדרות</button>
           <button class="btn secondary" id="btnDriveSignOut">ניתוק</button>
         </div>
         <div class="transfer-note">
-          כדי לחבר את Drive פעם אחת: ב-<strong>console.cloud.google.com</strong> יוצרים
-          פרויקט, מפעילים <strong>Google Drive API</strong>, ויוצרים
-          <strong>OAuth client ID</strong> מסוג Web application. בשדה
-          <strong>Authorized JavaScript origins</strong> מוסיפים את כתובת האפליקציה
-          (למשל <span dir="ltr">https://yourname.github.io</span>, בלי נתיב). ב-OAuth consent
-          screen מוסיפים את החשבון שלך כ-Test user. את ה-Client ID מדביקים כאן.
-          האפליקציה רואה רק קבצים שהיא עצמה יצרה (הרשאת drive.file).
+          חיבור חד-פעמי: ב-<strong>console.cloud.google.com</strong> יוצרים פרויקט,
+          מפעילים <strong>Google Drive API</strong>, מגדירים את מסך ההסכמה (מוסיפים
+          את החשבון שלך כ-Test user) ויוצרים <strong>OAuth client ID</strong> מסוג
+          Web application. ב-<strong>Authorized JavaScript origins</strong> מוסיפים את
+          כתובת האפליקציה, למשל <span dir="ltr">https://yourname.github.io</span>
+          (בלי נתיב). את ה-Client ID מדביקים כאן.
         </div>
       </details>
     </div>
+
+    <details class="drive-settings advanced">
+      <summary>מתקדם: העברה בקובץ (בלי Drive)</summary>
+      <div class="transfer-row">
+        <button class="btn secondary" id="btnExport">ייצוא קובץ&hellip;</button>
+        <button class="btn secondary" id="btnImport">ייבוא קובץ&hellip;</button>
+      </div>
+      <div class="transfer-note">
+        <strong>ייצוא</strong> שומר הכול &mdash; שיעורים, שירים והגדרות &mdash; בקובץ אחד.
+        <strong>ייבוא</strong> טוען קובץ כזה ומחליף את כל מה שקיים במכשיר.
+        מתאים כגיבוי חירום או להעברה כשאין Drive.
+      </div>
+    </details>
   </div>
 </div>
 
@@ -2292,7 +2291,7 @@
   }
   function setDriveProgress(msg){ document.getElementById("driveProgress").textContent = msg || ""; }
   function setDriveButtons(disabled){
-    ["btnDriveExport","btnDriveSync"].forEach(function(id){ document.getElementById(id).disabled = disabled; });
+    ["btnDriveSync"].forEach(function(id){ document.getElementById(id).disabled = disabled; });
   }
 
   function loadDriveConfig(cb){
@@ -2477,29 +2476,6 @@
         });
       });
     });
-  }
-
-  // Export: one dated, self-contained backup file (same format as "ייצוא קובץ")
-  function driveExportSnapshot(){
-    return buildExportPayload().then(function(d){
-      setDriveProgress("מכין קובץ גיבוי…");
-      return Promise.all(d.allSongs.map(function(s){
-        return blobToDataUrl(s.blob).then(function(u){ return { id: s.id, name: s.name, added: s.added, dataUrl: u }; });
-      })).then(function(songsOut){
-        var payload = { app: "lesson-planner", version: 2, exportedAt: Date.now(), settings: { locked: locked },
-          dayLessons: d.allDayLessons, songs: songsOut, templates: d.allTemplates };
-        var blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-        var name = "lesson-plan-" + new Date().toISOString().slice(0, 10) + ".json";
-        setDriveProgress("מעלה ל-Drive…");
-        return driveRootFolder().then(function(rootId){
-          return driveFindOrCreateFolder("Backups", rootId);
-        }).then(function(folderId){
-          return driveListFolder(folderId).then(function(files){
-            return driveUpload(folderId, name, blob, "application/json", files[name] && files[name].id);
-          });
-        });
-      });
-    }).then(function(){ return "הגיבוי נשמר ב-Drive, בתיקייה \"" + driveFolderName() + "/Backups\""; });
   }
 
   // ---- lessons as files named after the lesson --------------------------
@@ -2803,7 +2779,6 @@
     }).then(refreshAllP);
   }
 
-  document.getElementById("btnDriveExport").onclick = function(){ runDrive("מייצא", driveExportSnapshot); };
   document.getElementById("btnDriveSync").onclick = function(){ runDrive("מסנכרן", driveSync); };
   document.getElementById("btnQuickSync").onclick = function(){ runDrive("מסנכרן", driveSync); };
   document.getElementById("btnDriveSaveCfg").onclick = function(){
